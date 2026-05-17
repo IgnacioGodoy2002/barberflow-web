@@ -15,6 +15,7 @@ import { API_URL } from "./config/api";
 import { MyAppointments } from "./components/MyAppointments";
 import { AdminAppointments } from "./components/AdminAppointments";
 import { HowItWorks } from "./components/HowItWorks";
+import { Footer } from "./components/Footer";
 
 type Service = {
   id: string;
@@ -277,7 +278,9 @@ function App() {
 <section id="admin" className="mx-auto max-w-6xl px-6 pb-16">
   <AdminAppointments />
 </section>
-    </main>
+
+<Footer />
+</main>
   );
 }
 
