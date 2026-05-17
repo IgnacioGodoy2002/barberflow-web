@@ -11,6 +11,7 @@ import {
 import "./App.css";
 import logoBarberia from './assets/logo-barberia-pro.png'
 import { BookingForm } from "./components/BookingForm";
+import { API_URL } from "./config/api";
 
 type Service = {
   id: string;
@@ -30,7 +31,6 @@ type Barber = {
   }[];
 };
 
-const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
   const [services, setServices] = useState<Service[]>([]);

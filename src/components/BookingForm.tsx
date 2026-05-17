@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CalendarDays, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { API_URL } from "../config/api";
 
 type Service = {
   id: string;
@@ -33,7 +34,6 @@ type BookingFormProps = {
   barbers: Barber[];
 };
 
-const API_URL = import.meta.env.VITE_API_URL;
 
 export function BookingForm({ services, barbers }: BookingFormProps) {
   const [serviceId, setServiceId] = useState("");
