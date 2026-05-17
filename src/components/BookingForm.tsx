@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  ReceiptText,
   UserPlus,
 } from "lucide-react";
 import { API_URL } from "../config/api";
@@ -39,6 +40,13 @@ type BookingFormProps = {
   services: Service[];
   barbers: Barber[];
 };
+type ConfirmedBooking = {
+  serviceName: string;
+  barberName: string;
+  date: string;
+  time: string;
+  notes: string;
+};
 
 export function BookingForm({ services, barbers }: BookingFormProps) {
   const [serviceId, setServiceId] = useState("");
@@ -66,6 +74,8 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [message, setMessage] = useState("");
+  const [confirmedBooking, setConfirmedBooking] =
+  useState<ConfirmedBooking | null>(null);
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedBarber = barbers.find((barber) => barber.id === barberId);
@@ -77,10 +87,10 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
     }
 
     try {
-      setLoadingAvailability(true);
       setMessage("");
-      setSlots([]);
-      setSelectedSlot(null);
+setSlots([]);
+setSelectedSlot(null);
+setConfirmedBooking(null);
 
       const response = await fetch(
         `${API_URL}/v1/availability?barberId=${barberId}&serviceId=${serviceId}&date=${date}`
@@ -245,10 +255,22 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
         setMessage(apiMessage);
         return;
       }
+setConfirmedBooking({
+  serviceName: selectedService?.name || "Servicio",
+  barberName: selectedBarber?.displayName || "Barbero",
+  date,
+  time: selectedSlot.label,
+  notes,
+});
 
-      setMessage("Turno confirmado correctamente.");
-      setSelectedSlot(null);
-      await searchAvailability();
+setMessage("Turno confirmado correctamente.");
+
+setSlots((currentSlots) =>
+  currentSlots.filter((slot) => slot.startAt !== selectedSlot.startAt)
+);
+
+setSelectedSlot(null);
+setNotes("");
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
@@ -361,6 +383,66 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
           {message}
         </div>
       )}
+      {confirmedBooking && (
+  <div className="mt-6 rounded-3xl border border-green-500/30 bg-green-500/10 p-6">
+    <div className="mb-5 flex items-center gap-3">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600 text-white">
+        <ReceiptText size={22} />
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-300">
+          Comprobante
+        </p>
+        <h3 className="text-xl font-black text-white">
+          Turno confirmado
+        </h3>
+      </div>
+    </div>
+
+    <div className="grid gap-3 text-sm text-zinc-300 md:grid-cols-2">
+      <div className="rounded-2xl bg-zinc-950/60 p-4">
+        <p className="text-zinc-500">Servicio</p>
+        <p className="mt-1 font-bold text-white">
+          {confirmedBooking.serviceName}
+        </p>
+      </div>
+
+      <div className="rounded-2xl bg-zinc-950/60 p-4">
+        <p className="text-zinc-500">Barbero</p>
+        <p className="mt-1 font-bold text-white">
+          {confirmedBooking.barberName}
+        </p>
+      </div>
+
+      <div className="rounded-2xl bg-zinc-950/60 p-4">
+        <p className="text-zinc-500">Fecha</p>
+        <p className="mt-1 font-bold text-white">
+          {confirmedBooking.date}
+        </p>
+      </div>
+
+      <div className="rounded-2xl bg-zinc-950/60 p-4">
+        <p className="text-zinc-500">Hora</p>
+        <p className="mt-1 font-bold text-white">
+          {confirmedBooking.time}
+        </p>
+      </div>
+    </div>
+
+    {confirmedBooking.notes && (
+      <div className="mt-3 rounded-2xl bg-zinc-950/60 p-4 text-sm text-zinc-300">
+        <p className="text-zinc-500">Notas</p>
+        <p className="mt-1 text-white">{confirmedBooking.notes}</p>
+      </div>
+    )}
+
+    <p className="mt-5 text-sm text-green-200">
+      Guardá esta información. También podés consultar la reserva en la sección
+      “Mis turnos”.
+    </p>
+  </div>
+)}
 
       {slots.length > 0 && (
         <div className="mt-8">
