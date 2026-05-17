@@ -14,6 +14,7 @@ import { BookingForm } from "./components/BookingForm";
 import { API_URL } from "./config/api";
 import { MyAppointments } from "./components/MyAppointments";
 import { AdminAppointments } from "./components/AdminAppointments";
+import { HowItWorks } from "./components/HowItWorks";
 
 type Service = {
   id: string;
@@ -267,6 +268,7 @@ function App() {
           </div>
         )}
       </section>
+<HowItWorks />
 
             <section id="reservar" className="mx-auto max-w-6xl px-6 py-16">
   <BookingForm services={services} barbers={barbers} />
