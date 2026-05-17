@@ -12,6 +12,7 @@ import "./App.css";
 import logoBarberia from './assets/logo-barberia-pro.png'
 import { BookingForm } from "./components/BookingForm";
 import { API_URL } from "./config/api";
+import { MyAppointments } from "./components/MyAppointments";
 
 type Service = {
   id: string;
@@ -267,8 +268,9 @@ function App() {
       </section>
 
             <section id="reservar" className="mx-auto max-w-6xl px-6 py-16">
-        <BookingForm services={services} barbers={barbers} />
-      </section>
+  <BookingForm services={services} barbers={barbers} />
+  <MyAppointments />
+</section>
     </main>
   );
 }
