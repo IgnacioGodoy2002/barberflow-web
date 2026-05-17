@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { CalendarDays, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  UserPlus,
+} from "lucide-react";
 import { API_URL } from "../config/api";
 
 type Service = {
@@ -34,7 +40,6 @@ type BookingFormProps = {
   barbers: Barber[];
 };
 
-
 export function BookingForm({ services, barbers }: BookingFormProps) {
   const [serviceId, setServiceId] = useState("");
   const [barberId, setBarberId] = useState("");
@@ -48,8 +53,16 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
   const [password, setPassword] = useState("123456");
   const [notes, setNotes] = useState("Quiero un corte prolijo.");
 
-  const [token, setToken] = useState(localStorage.getItem("barberflow_token") || "");
+  const [name, setName] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+
+  const [token, setToken] = useState(
+    localStorage.getItem("barberflow_token") || ""
+  );
+
   const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [loadingRegister, setLoadingRegister] = useState(false);
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [message, setMessage] = useState("");
@@ -102,6 +115,53 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
     }
   }
 
+  async function registerClient() {
+    if (!name || !registerEmail || !registerPassword) {
+      setMessage("Completá nombre, email y contraseña para registrarte.");
+      return;
+    }
+
+    try {
+      setLoadingRegister(true);
+      setMessage("");
+
+      const response = await fetch(`${API_URL}/v1/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+  fullName: name,
+  email: registerEmail,
+  password: registerPassword,
+  role: "CLIENT",
+}),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo registrar el cliente.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setEmail(registerEmail);
+      setPassword(registerPassword);
+      setName("");
+      setRegisterEmail("");
+      setRegisterPassword("");
+      setMessage("Cuenta creada correctamente. Ahora tocá iniciar sesión.");
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingRegister(false);
+    }
+  }
+
   async function loginClient() {
     if (!email || !password) {
       setMessage("Ingresá email y contraseña.");
@@ -123,7 +183,7 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         setMessage(data.message || "No se pudo iniciar sesión.");
@@ -175,7 +235,7 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         const apiMessage = Array.isArray(data.message)
@@ -332,6 +392,62 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
           <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5">
             <h3 className="mb-4 font-bold">Datos del cliente</h3>
 
+            <div className="mb-6 rounded-2xl border border-white/10 bg-zinc-950 p-4">
+              <p className="mb-3 text-sm font-semibold text-zinc-300">
+                Crear cuenta nueva
+              </p>
+
+              <div className="grid gap-3">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Nombre completo"
+                  className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                />
+
+                <input
+                  type="email"
+                  value={registerEmail}
+                  onChange={(event) => setRegisterEmail(event.target.value)}
+                  placeholder="Email nuevo"
+                  className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                />
+
+                <input
+                  type="password"
+                  value={registerPassword}
+                  onChange={(event) =>
+                    setRegisterPassword(event.target.value)
+                  }
+                  placeholder="Contraseña nueva"
+                  className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                />
+
+                <button
+                  onClick={registerClient}
+                  disabled={loadingRegister}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
+                >
+                  {loadingRegister ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      Registrando...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={18} />
+                      Crear cuenta
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <p className="mb-3 text-sm font-semibold text-zinc-300">
+              Iniciar sesión
+            </p>
+
             <div className="grid gap-3">
               <input
                 type="email"
@@ -374,7 +490,9 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
             <div className="mb-4 rounded-2xl bg-white/5 p-4 text-sm text-zinc-300">
               <p>
                 Horario seleccionado:{" "}
-                <span className="font-bold text-white">{selectedSlot.label}</span>
+                <span className="font-bold text-white">
+                  {selectedSlot.label}
+                </span>
               </p>
               <p>
                 Fecha: <span className="font-bold text-white">{date}</span>
