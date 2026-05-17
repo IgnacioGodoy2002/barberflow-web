@@ -1,73 +1,60 @@
-# React + TypeScript + Vite
+# BarberFlow Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend profesional para BarberFlow, un sistema inteligente de turnos para barbería.
 
-Currently, two official plugins are available:
+Este proyecto permite consultar servicios, ver barberos disponibles, revisar horarios en tiempo real e iniciar una reserva conectándose con la API de BarberFlow.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Sitio online
 
-## React Compiler
+Frontend:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+https://barberflow-a0u8cix0l-ignaciogodoy2002s-projects.vercel.app/
 
-## Expanding the ESLint configuration
+Backend / Swagger:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+https://barberflow-api-9feo.onrender.com/api/docs
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Funcionalidades
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Página principal moderna para barbería.
+- Visualización de servicios desde la API.
+- Visualización de barberos desde la API.
+- Consulta de disponibilidad por servicio, barbero y fecha.
+- Inicio de sesión como cliente.
+- Confirmación de turno desde la web.
+- Conexión real con backend NestJS desplegado en Render.
+- Diseño responsive con React, TypeScript y Tailwind CSS.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Tecnologías utilizadas
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Lucide React
+- Fetch API
+- Vercel
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Backend conectado
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Este frontend consume la API REST de BarberFlow desarrollada con:
+
+- NestJS
+- TypeScript
+- PostgreSQL
+- Prisma
+- JWT
+- Swagger
+- Render
+- Neon
+
+Repositorio del backend:
+
+https://github.com/IgnacioGodoy2002/barberflow-api
+
+## Variables de entorno
+
+Crear un archivo `.env` basado en `.env.example`:
+
+```env
+VITE_API_URL=https://barberflow-api-9feo.onrender.com
