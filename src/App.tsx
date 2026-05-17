@@ -276,7 +276,17 @@ function App() {
   <MyAppointments />
 </section>
 <section id="admin" className="mx-auto max-w-6xl px-6 pb-16">
-  <AdminAppointments />
+  <details className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+    <summary className="cursor-pointer list-none text-center">
+      <span className="inline-flex rounded-full border border-purple-500/40 px-6 py-3 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/10">
+        Acceso interno para administración
+      </span>
+    </summary>
+
+    <div className="mt-8">
+      <AdminAppointments />
+    </div>
+  </details>
 </section>
 
 <Footer />
