@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarDays, Loader2, ShieldCheck, XCircle } from "lucide-react";
+import { CalendarDays, Loader2, RefreshCcw, XCircle } from "lucide-react";
 import { API_URL } from "../config/api";
 
 type Appointment = {
@@ -24,63 +24,13 @@ type Appointment = {
 };
 
 export function AdminAppointments() {
-  const [email, setEmail] = useState("admin@barberflow.com");
-  const [password, setPassword] = useState("123456");
-  const [token, setToken] = useState(
-    localStorage.getItem("barberflow_admin_token") || ""
-  );
-
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function loginAdmin() {
-    if (!email || !password) {
-      setMessage("Ingresá email y contraseña.");
-      return;
-    }
-
-    try {
-      setLoadingLogin(true);
-      setMessage("");
-
-      const response = await fetch(`${API_URL}/v1/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        setMessage(data.message || "No se pudo iniciar sesión.");
-        return;
-      }
-
-      localStorage.setItem("barberflow_admin_token", data.accessToken);
-      setToken(data.accessToken);
-      setMessage("Sesión admin iniciada correctamente.");
-    } catch {
-      setMessage("No se pudo conectar con la API.");
-    } finally {
-      setLoadingLogin(false);
-    }
-  }
-
-  function logoutAdmin() {
-    localStorage.removeItem("barberflow_admin_token");
-    setToken("");
-    setAppointments([]);
-    setMessage("Sesión admin cerrada.");
-  }
-
   async function loadAppointments() {
+    const token = localStorage.getItem("barberflow_admin_token");
+
     if (!token) {
       setMessage("Primero iniciá sesión como admin.");
       return;
@@ -120,10 +70,18 @@ export function AdminAppointments() {
   }
 
   async function cancelAppointment(appointmentId: string) {
+    const token = localStorage.getItem("barberflow_admin_token");
+
     if (!token) {
       setMessage("Primero iniciá sesión como admin.");
       return;
     }
+
+    const confirmed = window.confirm(
+      "¿Seguro que querés cancelar este turno?"
+    );
+
+    if (!confirmed) return;
 
     try {
       setLoadingAppointments(true);
@@ -163,69 +121,56 @@ export function AdminAppointments() {
     }).format(new Date(date));
   }
 
+  function getStatusLabel(status: string) {
+    if (status === "CONFIRMED") return "Confirmado";
+    if (status === "CANCELLED") return "Cancelado";
+    if (status === "PENDING") return "Pendiente";
+    if (status === "COMPLETED") return "Completado";
+
+    return status;
+  }
+
+  function getStatusClass(status: string) {
+    if (status === "CONFIRMED") {
+      return "border-green-500/30 bg-green-500/10 text-green-300";
+    }
+
+    if (status === "CANCELLED") {
+      return "border-red-500/30 bg-red-500/10 text-red-300";
+    }
+
+    if (status === "COMPLETED") {
+      return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+    }
+
+    return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
+  }
+
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-8">
-      <div className="mb-8 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-purple-400">
-          Panel interno
-        </p>
-        <h2 className="mt-3 text-3xl font-black">Gestión de turnos</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400">
-          Accedé como administrador para ver todos los turnos registrados y
-          cancelar reservas activas.
-        </p>
-      </div>
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600 text-white">
+            <CalendarDays size={22} />
+          </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="Email admin"
-          className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-        />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-300">
+              Turnos
+            </p>
+            <h3 className="text-xl font-black text-white">
+              Gestión de turnos
+            </h3>
+            <p className="mt-1 text-sm text-zinc-400">
+              Consultá todos los turnos registrados y cancelá reservas activas.
+            </p>
+          </div>
+        </div>
 
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="Contraseña"
-          className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-        />
-
-        {!token ? (
-          <button
-            onClick={loginAdmin}
-            disabled={loadingLogin}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60"
-          >
-            {loadingLogin ? (
-              <>
-                <Loader2 className="animate-spin" size={18} />
-                Ingresando...
-              </>
-            ) : (
-              <>
-                <ShieldCheck size={18} />
-                Entrar como admin
-              </>
-            )}
-          </button>
-        ) : (
-          <button
-            onClick={logoutAdmin}
-            className="rounded-2xl border border-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/10"
-          >
-            Cerrar sesión admin
-          </button>
-        )}
-      </div>
-
-      <div className="mt-6 flex justify-center">
         <button
           onClick={loadAppointments}
           disabled={loadingAppointments}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
         >
           {loadingAppointments ? (
             <>
@@ -234,31 +179,49 @@ export function AdminAppointments() {
             </>
           ) : (
             <>
-              <CalendarDays size={18} />
-              Ver todos los turnos
+              <RefreshCcw size={18} />
+              Actualizar turnos
             </>
           )}
         </button>
       </div>
 
       {message && (
-        <div className="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
+        <div className="mb-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
           {message}
         </div>
       )}
 
-      {appointments.length > 0 && (
-        <div className="mt-8 grid gap-4">
+      {appointments.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6 text-center">
+          <CalendarDays className="mx-auto mb-3 text-zinc-500" size={32} />
+          <p className="font-bold text-white">No hay turnos cargados</p>
+          <p className="mt-2 text-sm text-zinc-400">
+            Tocá “Actualizar turnos” para consultar las reservas registradas.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
           {appointments.map((appointment) => (
             <div
               key={appointment.id}
-              className="rounded-2xl border border-white/10 bg-zinc-900 p-5"
+              className="rounded-2xl border border-white/10 bg-zinc-950 p-5"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-lg font-bold text-white">
-                    {appointment.service?.name || "Servicio"}
-                  </p>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-bold text-white">
+                      {appointment.service?.name || "Servicio"}
+                    </p>
+
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClass(
+                        appointment.status
+                      )}`}
+                    >
+                      {getStatusLabel(appointment.status)}
+                    </span>
+                  </div>
 
                   <p className="mt-1 text-sm text-zinc-400">
                     Cliente:{" "}
@@ -280,13 +243,6 @@ export function AdminAppointments() {
                     Fecha:{" "}
                     <span className="text-zinc-200">
                       {formatDate(appointment.startAt)}
-                    </span>
-                  </p>
-
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Estado:{" "}
-                    <span className="font-semibold text-blue-300">
-                      {appointment.status}
                     </span>
                   </p>
 
