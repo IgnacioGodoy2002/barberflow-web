@@ -17,6 +17,7 @@ import { AdminAppointments } from "./components/AdminAppointments";
 import { HowItWorks } from "./components/HowItWorks";
 import { Footer } from "./components/Footer";
 import { WhatsAppButton } from "./components/WhatsAppButton";
+import { AdminServices } from "./components/AdminServices";
 
 type Service = {
   id: string;
@@ -284,9 +285,10 @@ function App() {
       </span>
     </summary>
 
-    <div className="mt-8">
-      <AdminAppointments />
-    </div>
+    <div className="mt-8 grid gap-6">
+  <AdminServices />
+  <AdminAppointments />
+</div>
   </details>
 </section>
 

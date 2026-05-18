@@ -140,11 +140,10 @@ setConfirmedBooking(null);
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+   body: JSON.stringify({
   fullName: name,
   email: registerEmail,
   password: registerPassword,
-  role: "CLIENT",
 }),
       });
 
