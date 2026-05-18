@@ -2,28 +2,39 @@
 
 Frontend profesional para BarberFlow, un sistema inteligente de turnos para barbería.
 
-Este proyecto permite consultar servicios, ver barberos disponibles, revisar horarios en tiempo real e iniciar una reserva conectándose con la API de BarberFlow.
+Este proyecto permite consultar servicios, ver barberos disponibles, revisar disponibilidad en tiempo real, registrar clientes, iniciar sesión, reservar turnos, consultar reservas propias y acceder a un panel interno de administración.
 
 ## Sitio online
 
 Frontend:
 
-https://barberflow-a0u8cix0l-ignaciogodoy2002s-projects.vercel.app/
+[Ver demo online](https://barberflow-a0u8cix0l-ignaciogodoy2002s-projects.vercel.app/)
 
 Backend / Swagger:
 
 https://barberflow-api-9feo.onrender.com/api/docs
 
-## Funcionalidades
+Repositorio backend:
 
-- Página principal moderna para barbería.
-- Visualización de servicios desde la API.
-- Visualización de barberos desde la API.
+https://github.com/IgnacioGodoy2002/barberflow-api
+
+## Funcionalidades principales
+
+- Landing page moderna para barbería.
+- Visualización de servicios desde API.
+- Visualización de barberos desde API.
 - Consulta de disponibilidad por servicio, barbero y fecha.
-- Inicio de sesión como cliente.
-- Confirmación de turno desde la web.
-- Conexión real con backend NestJS desplegado en Render.
-- Diseño responsive con React, TypeScript y Tailwind CSS.
+- Registro de clientes.
+- Inicio de sesión con JWT.
+- Reserva de turnos online.
+- Comprobante visual de turno confirmado.
+- Sección “Mis turnos” para consultar reservas del cliente.
+- Cancelación de turnos desde la web.
+- Panel interno para administración de turnos.
+- Botón flotante de WhatsApp.
+- Footer profesional con enlaces rápidos.
+- Favicon personalizado.
+- Deploy online en Vercel.
 
 ## Tecnologías utilizadas
 
@@ -37,7 +48,7 @@ https://barberflow-api-9feo.onrender.com/api/docs
 
 ## Backend conectado
 
-Este frontend consume la API REST de BarberFlow desarrollada con:
+Este frontend consume una API REST desarrollada con:
 
 - NestJS
 - TypeScript
@@ -48,13 +59,69 @@ Este frontend consume la API REST de BarberFlow desarrollada con:
 - Render
 - Neon
 
-Repositorio del backend:
-
-https://github.com/IgnacioGodoy2002/barberflow-api
-
 ## Variables de entorno
 
 Crear un archivo `.env` basado en `.env.example`:
 
 ```env
 VITE_API_URL=https://barberflow-api-9feo.onrender.com
+```
+
+El proyecto también incluye una configuración de respaldo para producción en:
+
+```text
+src/config/api.ts
+```
+
+## Instalación local
+
+```bash
+npm install
+npm run dev
+```
+
+En Windows PowerShell, si aparece un error de ejecución de scripts, usar:
+
+```bash
+npm.cmd install
+npm.cmd run dev
+```
+
+## Build de producción
+
+```bash
+npm run build
+```
+
+En Windows PowerShell:
+
+```bash
+npm.cmd run build
+```
+
+## Estructura principal
+
+```text
+src/
+├── assets/
+├── components/
+│   ├── AdminAppointments.tsx
+│   ├── BookingForm.tsx
+│   ├── Footer.tsx
+│   ├── HowItWorks.tsx
+│   ├── MyAppointments.tsx
+│   └── WhatsAppButton.tsx
+├── config/
+│   └── api.ts
+├── App.tsx
+├── App.css
+├── index.css
+└── main.tsx
+```
+
+## Autor
+
+Ignacio Gabriel Godoy
+
+Desarrollador Backend Jr.  
+Proyecto personal desarrollado conectando experiencia real en barbería con desarrollo web fullstack.
