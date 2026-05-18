@@ -13,6 +13,7 @@ import { AdminAppointments } from "./AdminAppointments";
 import { AdminAssignServices } from "./AdminAssignServices";
 import { AdminBarbers } from "./AdminBarbers";
 import { AdminServices } from "./AdminServices";
+import { AdminDashboard } from "./AdminDashboard";
 
 type AdminTab = "services" | "barbers" | "assign" | "appointments";
 
@@ -215,6 +216,7 @@ export function AdminPanel() {
         </button>
       </div>
 
+<AdminDashboard />
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
