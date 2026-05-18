@@ -86,45 +86,43 @@ function App() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.25),_transparent_35%),radial-gradient(circle_at_top_left,_rgba(168,85,247,0.18),_transparent_30%)]" />
 
         <div className="relative mx-auto max-w-6xl px-6 py-20">
-          <nav className="mb-20 flex items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-40 w-40 items-center justify-center rounded-3xl border border-white/10 bg-zinc-900 p-1.5 shadow-xl shadow-black/40">
-                <img
-                  src={logoBarberia}
-                  alt="Logo de Nacho Barbershop"
-                  className="h-full w-full rounded-2xl object-contain"
-                />
-              </div>
+          <nav className="mb-16 flex flex-col gap-6 md:mb-20 md:flex-row md:items-center md:justify-between">
+  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+    <div className="flex h-24 w-24 items-center justify-center rounded-3xl border border-white/10 bg-zinc-900 p-1.5 shadow-xl shadow-black/40 sm:h-32 sm:w-32 md:h-40 md:w-40">
+      <img
+        src={logoBarberia}
+        alt="Logo de Nacho Barbershop"
+        className="h-full w-full rounded-2xl object-contain"
+      />
+    </div>
 
-              <div>
-                <p className="text-2xl font-black text-white">
-                  Nacho Barbershop
-                </p>
-                <p className="text-sm text-zinc-300">
-                  BarberFlow · Turnos inteligentes
-                </p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Hipólito Bouchard 2086
-                </p>
-              </div>
-            </div>
+    <div>
+      <p className="text-2xl font-black text-white">Nacho Barbershop</p>
+      <p className="text-sm text-zinc-300">
+        BarberFlow · Turnos inteligentes
+      </p>
+      <p className="mt-1 text-xs text-zinc-500">
+        Hipólito Bouchard 2086
+      </p>
+    </div>
+  </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <a
-                href="#reservar"
-                className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Reservar turno
-              </a>
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center md:justify-end">
+    <a
+      href="#reservar"
+      className="rounded-full bg-white px-5 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+    >
+      Reservar turno
+    </a>
 
-              <a
-                href="/admin"
-                className="rounded-full border border-purple-500/40 px-5 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/10"
-              >
-                Panel interno
-              </a>
-            </div>
-          </nav>
+    <a
+      href="/admin"
+      className="rounded-full border border-purple-500/40 px-5 py-2 text-center text-sm font-semibold text-purple-300 transition hover:bg-purple-500/10"
+    >
+      Panel interno
+    </a>
+  </div>
+</nav>
 
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
@@ -133,8 +131,7 @@ function App() {
                 API real conectada a NestJS + PostgreSQL
               </div>
 
-              <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
-                Reservá tu turno de barbería de forma simple, rápida y
+<h1 className="max-w-3xl text-4xl font-black leading-tight tracking-tight sm:text-5xl md:text-6xl">                Reservá tu turno de barbería de forma simple, rápida y
                 profesional.
               </h1>
 
