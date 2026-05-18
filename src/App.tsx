@@ -16,6 +16,7 @@ import { MyAppointments } from "./components/MyAppointments";
 import { AdminAppointments } from "./components/AdminAppointments";
 import { HowItWorks } from "./components/HowItWorks";
 import { Footer } from "./components/Footer";
+import { WhatsAppButton } from "./components/WhatsAppButton";
 
 type Service = {
   id: string;
@@ -290,6 +291,7 @@ function App() {
 </section>
 
 <Footer />
+<WhatsAppButton />
 </main>
   );
 }
