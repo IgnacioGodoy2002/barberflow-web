@@ -44,11 +44,12 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  if (isAdminPage) {
-    return <AdminPage />;
-  }
-
   useEffect(() => {
+    if (isAdminPage) {
+      setLoading(false);
+      return;
+    }
+
     async function loadData() {
       try {
         const [servicesResponse, barbersResponse] = await Promise.all([
@@ -63,8 +64,8 @@ function App() {
         const servicesData = await servicesResponse.json();
         const barbersData = await barbersResponse.json();
 
-        setServices(servicesData);
-        setBarbers(barbersData);
+        setServices(Array.isArray(servicesData) ? servicesData : []);
+        setBarbers(Array.isArray(barbersData) ? barbersData : []);
       } catch {
         setError("No se pudo conectar con BarberFlow API.");
       } finally {
@@ -73,7 +74,11 @@ function App() {
     }
 
     loadData();
-  }, []);
+  }, [isAdminPage]);
+
+  if (isAdminPage) {
+    return <AdminPage />;
+  }
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -81,7 +86,7 @@ function App() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.25),_transparent_35%),radial-gradient(circle_at_top_left,_rgba(168,85,247,0.18),_transparent_30%)]" />
 
         <div className="relative mx-auto max-w-6xl px-6 py-20">
-          <nav className="mb-20 flex items-center justify-between">
+          <nav className="mb-20 flex items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="flex h-40 w-40 items-center justify-center rounded-3xl border border-white/10 bg-zinc-900 p-1.5 shadow-xl shadow-black/40">
                 <img
@@ -104,12 +109,21 @@ function App() {
               </div>
             </div>
 
-            <a
-              href="#reservar"
-              className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-            >
-              Reservar turno
-            </a>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <a
+                href="#reservar"
+                className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+              >
+                Reservar turno
+              </a>
+
+              <a
+                href="/admin"
+                className="rounded-full border border-purple-500/40 px-5 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/10"
+              >
+                Panel interno
+              </a>
+            </div>
           </nav>
 
           <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -268,7 +282,7 @@ function App() {
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {barber.services.map((item) => (
+                  {barber.services?.map((item) => (
                     <span
                       key={item.service.id}
                       className="rounded-full bg-white/10 px-3 py-1 text-xs text-zinc-300"
