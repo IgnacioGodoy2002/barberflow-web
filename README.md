@@ -8,7 +8,7 @@ Este proyecto permite consultar servicios, ver barberos disponibles, revisar dis
 
 Frontend:
 
-[Ver demo online](https://barberflow-a0u8cix0l-ignaciogodoy2002s-projects.vercel.app/)
+[Ver demo online]https://barberflow-web-six.vercel.app/
 
 Backend / Swagger:
 
