@@ -18,6 +18,7 @@ import { Footer } from "./components/Footer";
 import { WhatsAppButton } from "./components/WhatsAppButton";
 import { AdminPage } from "./pages/AdminPage";
 import { AboutSection } from "./components/AboutSection";
+import { GallerySection } from "./components/GallerySection";
 
 type Service = {
   id: string;
@@ -121,6 +122,13 @@ function App() {
               </a>
 
               <a
+                href="#galeria"
+                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
+              >
+                Galería
+              </a>
+
+              <a
                 href="#reservar"
                 className="rounded-full bg-white px-5 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
               >
@@ -211,6 +219,8 @@ function App() {
       </section>
 
       <AboutSection />
+
+      <GallerySection />
 
       <section id="servicios" className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-10">
