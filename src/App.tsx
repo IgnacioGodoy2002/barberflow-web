@@ -13,13 +13,11 @@ import logoBarberia from './assets/logo-barberia-pro.png'
 import { BookingForm } from "./components/BookingForm";
 import { API_URL } from "./config/api";
 import { MyAppointments } from "./components/MyAppointments";
-import { AdminAppointments } from "./components/AdminAppointments";
+
 import { HowItWorks } from "./components/HowItWorks";
 import { Footer } from "./components/Footer";
 import { WhatsAppButton } from "./components/WhatsAppButton";
-import { AdminServices } from "./components/AdminServices";
-import { AdminBarbers } from "./components/AdminBarbers";
-import { AdminAssignServices } from "./components/AdminAssignServices";
+import { AdminPanel } from "./components/AdminPanel";
 
 type Service = {
   id: string;
@@ -287,12 +285,9 @@ function App() {
       </span>
     </summary>
 
-    <div className="mt-8 grid gap-6">
-  <AdminServices />
-  <AdminBarbers />
-  <AdminAssignServices />
-  <AdminAppointments />
-</div>
+    <div className="mt-8">
+      <AdminPanel />
+    </div>
   </details>
 </section>
 
