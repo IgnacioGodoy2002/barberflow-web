@@ -18,6 +18,7 @@ import { HowItWorks } from "./components/HowItWorks";
 import { Footer } from "./components/Footer";
 import { WhatsAppButton } from "./components/WhatsAppButton";
 import { AdminServices } from "./components/AdminServices";
+import { AdminBarbers } from "./components/AdminBarbers";
 
 type Service = {
   id: string;
@@ -287,6 +288,7 @@ function App() {
 
     <div className="mt-8 grid gap-6">
   <AdminServices />
+  <AdminBarbers />
   <AdminAppointments />
 </div>
   </details>
