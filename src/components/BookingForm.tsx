@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  LogIn,
+  LogOut,
   ReceiptText,
   UserPlus,
 } from "lucide-react";
@@ -40,6 +42,7 @@ type BookingFormProps = {
   services: Service[];
   barbers: Barber[];
 };
+
 type ConfirmedBooking = {
   serviceName: string;
   barberName: string;
@@ -48,18 +51,28 @@ type ConfirmedBooking = {
   notes: string;
 };
 
+type AuthTab = "login" | "register";
+
 export function BookingForm({ services, barbers }: BookingFormProps) {
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+
   const [serviceId, setServiceId] = useState("");
   const [barberId, setBarberId] = useState("");
-  const [date, setDate] = useState("2026-05-18");
+  const [date, setDate] = useState(today);
+
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(
     null
   );
 
-  const [email, setEmail] = useState("ignacio@test.com");
-  const [password, setPassword] = useState("123456");
-  const [notes, setNotes] = useState("Quiero un corte prolijo.");
+  const [authTab, setAuthTab] = useState<AuthTab>("login");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [notes, setNotes] = useState("");
 
   const [name, setName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -73,9 +86,10 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingBooking, setLoadingBooking] = useState(false);
+
   const [message, setMessage] = useState("");
   const [confirmedBooking, setConfirmedBooking] =
-  useState<ConfirmedBooking | null>(null);
+    useState<ConfirmedBooking | null>(null);
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedBarber = barbers.find((barber) => barber.id === barberId);
@@ -87,10 +101,11 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
     }
 
     try {
+      setLoadingAvailability(true);
       setMessage("");
-setSlots([]);
-setSelectedSlot(null);
-setConfirmedBooking(null);
+      setSlots([]);
+      setSelectedSlot(null);
+      setConfirmedBooking(null);
 
       const response = await fetch(
         `${API_URL}/v1/availability?barberId=${barberId}&serviceId=${serviceId}&date=${date}`
@@ -140,11 +155,11 @@ setConfirmedBooking(null);
         headers: {
           "Content-Type": "application/json",
         },
-   body: JSON.stringify({
-  fullName: name,
-  email: registerEmail,
-  password: registerPassword,
-}),
+        body: JSON.stringify({
+          fullName: name,
+          email: registerEmail,
+          password: registerPassword,
+        }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -163,6 +178,7 @@ setConfirmedBooking(null);
       setName("");
       setRegisterEmail("");
       setRegisterPassword("");
+      setAuthTab("login");
       setMessage("Cuenta creada correctamente. Ahora tocá iniciar sesión.");
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -195,12 +211,17 @@ setConfirmedBooking(null);
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setMessage(data.message || "No se pudo iniciar sesión.");
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo iniciar sesión.";
+
+        setMessage(apiMessage);
         return;
       }
 
       localStorage.setItem("barberflow_token", data.accessToken);
       setToken(data.accessToken);
+      setPassword("");
       setMessage("Sesión iniciada correctamente.");
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -212,6 +233,8 @@ setConfirmedBooking(null);
   function logoutClient() {
     localStorage.removeItem("barberflow_token");
     setToken("");
+    setEmail("");
+    setPassword("");
     setMessage("Sesión cerrada.");
   }
 
@@ -254,22 +277,23 @@ setConfirmedBooking(null);
         setMessage(apiMessage);
         return;
       }
-setConfirmedBooking({
-  serviceName: selectedService?.name || "Servicio",
-  barberName: selectedBarber?.displayName || "Barbero",
-  date,
-  time: selectedSlot.label,
-  notes,
-});
 
-setMessage("Turno confirmado correctamente.");
+      setConfirmedBooking({
+        serviceName: selectedService?.name || "Servicio",
+        barberName: selectedBarber?.displayName || "Barbero",
+        date,
+        time: selectedSlot.label,
+        notes,
+      });
 
-setSlots((currentSlots) =>
-  currentSlots.filter((slot) => slot.startAt !== selectedSlot.startAt)
-);
+      setMessage("Turno confirmado correctamente.");
 
-setSelectedSlot(null);
-setNotes("");
+      setSlots((currentSlots) =>
+        currentSlots.filter((slot) => slot.startAt !== selectedSlot.startAt)
+      );
+
+      setSelectedSlot(null);
+      setNotes("");
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
@@ -283,7 +307,9 @@ setNotes("");
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
           Reservas
         </p>
+
         <h2 className="mt-3 text-3xl font-black">Reservá tu turno</h2>
+
         <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400">
           Elegí un servicio, un barbero y una fecha para consultar horarios
           disponibles en tiempo real.
@@ -295,12 +321,19 @@ setNotes("");
           <label className="mb-2 block text-sm font-semibold text-zinc-300">
             Servicio
           </label>
+
           <select
             value={serviceId}
-            onChange={(event) => setServiceId(event.target.value)}
+            onChange={(event) => {
+              setServiceId(event.target.value);
+              setSlots([]);
+              setSelectedSlot(null);
+              setConfirmedBooking(null);
+            }}
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="">Seleccionar servicio</option>
+
             {services.map((service) => (
               <option key={service.id} value={service.id}>
                 {service.name}
@@ -313,12 +346,19 @@ setNotes("");
           <label className="mb-2 block text-sm font-semibold text-zinc-300">
             Barbero
           </label>
+
           <select
             value={barberId}
-            onChange={(event) => setBarberId(event.target.value)}
+            onChange={(event) => {
+              setBarberId(event.target.value);
+              setSlots([]);
+              setSelectedSlot(null);
+              setConfirmedBooking(null);
+            }}
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="">Seleccionar barbero</option>
+
             {barbers.map((barber) => (
               <option key={barber.id} value={barber.id}>
                 {barber.displayName}
@@ -331,10 +371,17 @@ setNotes("");
           <label className="mb-2 block text-sm font-semibold text-zinc-300">
             Fecha
           </label>
+
           <input
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            min={today}
+            onChange={(event) => {
+              setDate(event.target.value);
+              setSlots([]);
+              setSelectedSlot(null);
+              setConfirmedBooking(null);
+            }}
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           />
         </div>
@@ -368,6 +415,7 @@ setNotes("");
               {selectedService.name}
             </span>
           </p>
+
           <p>
             Barbero:{" "}
             <span className="font-semibold text-white">
@@ -382,66 +430,68 @@ setNotes("");
           {message}
         </div>
       )}
+
       {confirmedBooking && (
-  <div className="mt-6 rounded-3xl border border-green-500/30 bg-green-500/10 p-6">
-    <div className="mb-5 flex items-center gap-3">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600 text-white">
-        <ReceiptText size={22} />
-      </div>
+        <div className="mt-6 rounded-3xl border border-green-500/30 bg-green-500/10 p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600 text-white">
+              <ReceiptText size={22} />
+            </div>
 
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-300">
-          Comprobante
-        </p>
-        <h3 className="text-xl font-black text-white">
-          Turno confirmado
-        </h3>
-      </div>
-    </div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-300">
+                Comprobante
+              </p>
 
-    <div className="grid gap-3 text-sm text-zinc-300 md:grid-cols-2">
-      <div className="rounded-2xl bg-zinc-950/60 p-4">
-        <p className="text-zinc-500">Servicio</p>
-        <p className="mt-1 font-bold text-white">
-          {confirmedBooking.serviceName}
-        </p>
-      </div>
+              <h3 className="text-xl font-black text-white">
+                Turno confirmado
+              </h3>
+            </div>
+          </div>
 
-      <div className="rounded-2xl bg-zinc-950/60 p-4">
-        <p className="text-zinc-500">Barbero</p>
-        <p className="mt-1 font-bold text-white">
-          {confirmedBooking.barberName}
-        </p>
-      </div>
+          <div className="grid gap-3 text-sm text-zinc-300 md:grid-cols-2">
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Servicio</p>
+              <p className="mt-1 font-bold text-white">
+                {confirmedBooking.serviceName}
+              </p>
+            </div>
 
-      <div className="rounded-2xl bg-zinc-950/60 p-4">
-        <p className="text-zinc-500">Fecha</p>
-        <p className="mt-1 font-bold text-white">
-          {confirmedBooking.date}
-        </p>
-      </div>
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Barbero</p>
+              <p className="mt-1 font-bold text-white">
+                {confirmedBooking.barberName}
+              </p>
+            </div>
 
-      <div className="rounded-2xl bg-zinc-950/60 p-4">
-        <p className="text-zinc-500">Hora</p>
-        <p className="mt-1 font-bold text-white">
-          {confirmedBooking.time}
-        </p>
-      </div>
-    </div>
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Fecha</p>
+              <p className="mt-1 font-bold text-white">
+                {confirmedBooking.date}
+              </p>
+            </div>
 
-    {confirmedBooking.notes && (
-      <div className="mt-3 rounded-2xl bg-zinc-950/60 p-4 text-sm text-zinc-300">
-        <p className="text-zinc-500">Notas</p>
-        <p className="mt-1 text-white">{confirmedBooking.notes}</p>
-      </div>
-    )}
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Hora</p>
+              <p className="mt-1 font-bold text-white">
+                {confirmedBooking.time}
+              </p>
+            </div>
+          </div>
 
-    <p className="mt-5 text-sm text-green-200">
-      Guardá esta información. También podés consultar la reserva en la sección
-      “Mis turnos”.
-    </p>
-  </div>
-)}
+          {confirmedBooking.notes && (
+            <div className="mt-3 rounded-2xl bg-zinc-950/60 p-4 text-sm text-zinc-300">
+              <p className="text-zinc-500">Notas</p>
+              <p className="mt-1 text-white">{confirmedBooking.notes}</p>
+            </div>
+          )}
+
+          <p className="mt-5 text-sm text-green-200">
+            Guardá esta información. También podés consultar la reserva en la
+            sección “Mis turnos”.
+          </p>
+        </div>
+      )}
 
       {slots.length > 0 && (
         <div className="mt-8">
@@ -473,96 +523,148 @@ setNotes("");
           <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5">
             <h3 className="mb-4 font-bold">Datos del cliente</h3>
 
-            <div className="mb-6 rounded-2xl border border-white/10 bg-zinc-950 p-4">
-              <p className="mb-3 text-sm font-semibold text-zinc-300">
-                Crear cuenta nueva
-              </p>
+            {token ? (
+              <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5">
+                <p className="font-bold text-white">Sesión iniciada</p>
 
-              <div className="grid gap-3">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Nombre completo"
-                  className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-                />
+                <p className="mt-2 text-sm text-green-200">
+                  Ya podés confirmar el turno seleccionado.
+                </p>
 
-                <input
-                  type="email"
-                  value={registerEmail}
-                  onChange={(event) => setRegisterEmail(event.target.value)}
-                  placeholder="Email nuevo"
-                  className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-                />
-
-                <input
-                  type="password"
-                  value={registerPassword}
-                  onChange={(event) =>
-                    setRegisterPassword(event.target.value)
-                  }
-                  placeholder="Contraseña nueva"
-                  className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-                />
-
-                <button
-                  onClick={registerClient}
-                  disabled={loadingRegister}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
-                >
-                  {loadingRegister ? (
-                    <>
-                      <Loader2 className="animate-spin" size={18} />
-                      Registrando...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={18} />
-                      Crear cuenta
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <p className="mb-3 text-sm font-semibold text-zinc-300">
-              Iniciar sesión
-            </p>
-
-            <div className="grid gap-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email"
-                className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-              />
-
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Contraseña"
-                className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-              />
-
-              {!token ? (
-                <button
-                  onClick={loginClient}
-                  disabled={loadingLogin}
-                  className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
-                >
-                  {loadingLogin ? "Ingresando..." : "Iniciar sesión"}
-                </button>
-              ) : (
                 <button
                   onClick={logoutClient}
-                  className="rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
+                  <LogOut size={18} />
                   Cerrar sesión
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-5 grid grid-cols-2 rounded-2xl border border-white/10 bg-zinc-950 p-1">
+                  <button
+                    onClick={() => {
+                      setAuthTab("login");
+                      setMessage("");
+                    }}
+                    className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      authTab === "login"
+                        ? "bg-blue-600 text-white"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Iniciar sesión
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setAuthTab("register");
+                      setMessage("");
+                    }}
+                    className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      authTab === "register"
+                        ? "bg-blue-600 text-white"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    Crear cuenta
+                  </button>
+                </div>
+
+                {authTab === "login" ? (
+                  <div className="grid gap-3">
+                    <p className="text-sm text-zinc-400">
+                      Ingresá con tu cuenta para confirmar el turno.
+                    </p>
+
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="Email"
+                      className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                    />
+
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Contraseña"
+                      className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                    />
+
+                    <button
+                      onClick={loginClient}
+                      disabled={loadingLogin}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
+                    >
+                      {loadingLogin ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          Ingresando...
+                        </>
+                      ) : (
+                        <>
+                          <LogIn size={18} />
+                          Iniciar sesión
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    <p className="text-sm text-zinc-400">
+                      Creá una cuenta rápida para poder reservar y ver tus
+                      turnos.
+                    </p>
+
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="Nombre completo"
+                      className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                    />
+
+                    <input
+                      type="email"
+                      value={registerEmail}
+                      onChange={(event) => setRegisterEmail(event.target.value)}
+                      placeholder="Email nuevo"
+                      className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                    />
+
+                    <input
+                      type="password"
+                      value={registerPassword}
+                      onChange={(event) =>
+                        setRegisterPassword(event.target.value)
+                      }
+                      placeholder="Contraseña nueva"
+                      className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+                    />
+
+                    <button
+                      onClick={registerClient}
+                      disabled={loadingRegister}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
+                    >
+                      {loadingRegister ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          Registrando...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={18} />
+                          Crear cuenta
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5">
@@ -575,6 +677,7 @@ setNotes("");
                   {selectedSlot.label}
                 </span>
               </p>
+
               <p>
                 Fecha: <span className="font-bold text-white">{date}</span>
               </p>
