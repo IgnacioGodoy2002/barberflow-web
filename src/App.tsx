@@ -21,6 +21,7 @@ import { AboutSection } from "./components/AboutSection";
 import { GallerySection } from "./components/GallerySection";
 import { TestimonialsSection } from "./components/TestimonialsSection";
 import { ContactSection } from "./components/ContactSection";
+import { FaqSection } from "./components/FaqSection";
 
 type Service = {
   id: string;
@@ -120,7 +121,7 @@ function App() {
                 href="#sobre"
                 className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
               >
-                Sobre nosotros
+                Sobre
               </a>
 
               <a
@@ -145,10 +146,17 @@ function App() {
               </a>
 
               <a
+                href="#faq"
+                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
+              >
+                FAQ
+              </a>
+
+              <a
                 href="#reservar"
                 className="rounded-full bg-white px-5 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
               >
-                Reservar turno
+                Reservar
               </a>
 
               <a
@@ -241,6 +249,8 @@ function App() {
       <TestimonialsSection />
 
       <ContactSection />
+
+      <FaqSection />
 
       <section id="servicios" className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-10">
