@@ -12,8 +12,8 @@ import { API_URL } from "../config/api";
 import { AdminAppointments } from "./AdminAppointments";
 import { AdminAssignServices } from "./AdminAssignServices";
 import { AdminBarbers } from "./AdminBarbers";
-import { AdminServices } from "./AdminServices";
 import { AdminDashboard } from "./AdminDashboard";
+import { AdminServices } from "./AdminServices";
 
 type AdminTab = "services" | "barbers" | "assign" | "appointments";
 
@@ -21,21 +21,25 @@ const tabs = [
   {
     id: "services",
     label: "Servicios",
+    shortLabel: "Servicios",
     icon: Scissors,
   },
   {
     id: "barbers",
     label: "Barberos",
+    shortLabel: "Barberos",
     icon: UserRound,
   },
   {
     id: "assign",
     label: "Asignar servicios",
+    shortLabel: "Asignar",
     icon: CheckCircle2,
   },
   {
     id: "appointments",
     label: "Turnos",
+    shortLabel: "Turnos",
     icon: CalendarDays,
   },
 ] as const;
@@ -76,7 +80,11 @@ export function AdminPanel() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setMessage(data.message || "No se pudo iniciar sesión.");
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo iniciar sesión.";
+
+        setMessage(apiMessage);
         return;
       }
 
@@ -122,7 +130,7 @@ export function AdminPanel() {
 
   if (!token) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-8">
+      <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 md:p-8">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-600 text-white">
             <ShieldCheck size={26} />
@@ -164,7 +172,7 @@ export function AdminPanel() {
           <button
             onClick={loginAdmin}
             disabled={loadingLogin}
-            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-purple-600 px-6 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60 sm:w-auto"
           >
             {loadingLogin ? (
               <>
@@ -189,8 +197,10 @@ export function AdminPanel() {
     );
   }
 
+  const activeTabData = tabs.find((tab) => tab.id === activeTab);
+
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-8">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 md:p-8">
       <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-purple-400">
@@ -209,34 +219,43 @@ export function AdminPanel() {
 
         <button
           onClick={logoutAdmin}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 md:w-auto"
         >
           <LogOut size={18} />
           Cerrar sesión
         </button>
       </div>
 
-<AdminDashboard />
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+      <AdminDashboard />
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                isActive
-                  ? "border-purple-500 bg-purple-500/20 text-purple-200"
-                  : "border-white/10 bg-zinc-950 text-zinc-300 hover:border-purple-500/40 hover:bg-purple-500/10"
-              }`}
-            >
-              <Icon size={18} />
-              {tab.label}
-            </button>
-          );
-        })}
+      <div className="mb-4 rounded-3xl border border-white/10 bg-zinc-950 p-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex min-w-max items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? "border-purple-500 bg-purple-500/20 text-purple-200"
+                    : "border-white/10 bg-black text-zinc-300 hover:border-purple-500/40 hover:bg-purple-500/10"
+                }`}
+              >
+                <Icon size={18} />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-zinc-400">
+        Sección actual:{" "}
+        <span className="font-bold text-white">{activeTabData?.label}</span>
       </div>
 
       {message && (
