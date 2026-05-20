@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   Loader2,
@@ -14,8 +15,14 @@ import { AdminAssignServices } from "./AdminAssignServices";
 import { AdminBarbers } from "./AdminBarbers";
 import { AdminDashboard } from "./AdminDashboard";
 import { AdminServices } from "./AdminServices";
+import { AdminWorkingHours } from "./AdminWorkingHours";
 
-type AdminTab = "services" | "barbers" | "assign" | "appointments";
+type AdminTab =
+  | "services"
+  | "barbers"
+  | "assign"
+  | "appointments"
+  | "workingHours";
 
 const tabs = [
   {
@@ -37,6 +44,11 @@ const tabs = [
     id: "appointments",
     label: "Turnos",
     icon: CalendarDays,
+  },
+  {
+    id: "workingHours",
+    label: "Horarios",
+    icon: CalendarClock,
   },
 ] as const;
 
@@ -109,19 +121,12 @@ export function AdminPanel() {
   }
 
   function renderContent() {
-    if (activeTab === "services") {
-      return <AdminServices />;
-    }
+    if (activeTab === "services") return <AdminServices />;
+    if (activeTab === "barbers") return <AdminBarbers />;
+    if (activeTab === "assign") return <AdminAssignServices />;
+    if (activeTab === "appointments") return <AdminAppointments />;
 
-    if (activeTab === "barbers") {
-      return <AdminBarbers />;
-    }
-
-    if (activeTab === "assign") {
-      return <AdminAssignServices />;
-    }
-
-    return <AdminAppointments />;
+    return <AdminWorkingHours />;
   }
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab);
@@ -144,7 +149,7 @@ export function AdminPanel() {
 
           <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400">
             Iniciá sesión como administrador para gestionar servicios, barberos,
-            asignaciones y turnos.
+            asignaciones, turnos y horarios.
           </p>
         </div>
 
@@ -208,8 +213,8 @@ export function AdminPanel() {
           </h2>
 
           <p className="mt-2 max-w-2xl text-sm text-zinc-400 md:mt-3">
-            Gestioná servicios, barberos, asignaciones y turnos desde un solo
-            lugar.
+            Gestioná servicios, barberos, asignaciones, turnos y horarios desde
+            un solo lugar.
           </p>
         </div>
 
@@ -225,7 +230,7 @@ export function AdminPanel() {
       <AdminDashboard />
 
       <div className="mb-4 rounded-3xl border border-white/10 bg-zinc-950 p-2">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
