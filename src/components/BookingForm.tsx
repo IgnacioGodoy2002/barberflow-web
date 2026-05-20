@@ -7,7 +7,9 @@ import {
   LogIn,
   LogOut,
   ReceiptText,
+  Scissors,
   UserPlus,
+  UserRound,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 
@@ -446,23 +448,86 @@ export function BookingForm({
         </button>
       </div>
 
-      {selectedService && selectedBarber && (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-sm text-zinc-300">
-          <p>
-            Servicio:{" "}
-            <span className="font-semibold text-white">
-              {selectedService.name}
-            </span>
-          </p>
+      {selectedService || selectedBarber ? (
+  <div className="mt-6 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5">
+    <div className="mb-4 flex items-center gap-3">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white">
+        <CalendarDays size={20} />
+      </div>
 
-          <p>
-            Barbero:{" "}
-            <span className="font-semibold text-white">
-              {selectedBarber.displayName}
-            </span>
-          </p>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">
+          Selección actual
+        </p>
+
+        <h3 className="text-lg font-black text-white">
+          Preparando tu reserva
+        </h3>
+      </div>
+    </div>
+
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+          <Scissors size={17} className="text-blue-300" />
+          Servicio
         </div>
-      )}
+
+        {selectedService ? (
+          <>
+            <p className="font-bold text-white">{selectedService.name}</p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              Duración:{" "}
+              <span className="font-semibold text-zinc-200">
+                {selectedService.durationMinutes} min
+              </span>
+            </p>
+
+            <p className="mt-1 text-sm text-zinc-400">
+              Precio:{" "}
+              <span className="font-semibold text-zinc-200">
+                ${Number(selectedService.price).toLocaleString("es-AR")}
+              </span>
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            Todavía no seleccionaste un servicio.
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+          <UserRound size={17} className="text-purple-300" />
+          Barbero
+        </div>
+
+        {selectedBarber ? (
+          <>
+            <p className="font-bold text-white">
+              {selectedBarber.displayName}
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              Profesional seleccionado para este turno.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            Todavía no seleccionaste un barbero.
+          </p>
+        )}
+      </div>
+    </div>
+
+    <p className="mt-4 text-xs leading-5 text-blue-100">
+      Cuando tengas servicio, barbero y fecha seleccionados, tocá “Ver horarios
+      disponibles” para consultar la agenda en tiempo real.
+    </p>
+  </div>
+) : null}
 
       {message && (
         <div className="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
