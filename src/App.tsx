@@ -21,6 +21,7 @@ import { TestimonialsSection } from "./components/TestimonialsSection";
 import { ContactSection } from "./components/ContactSection";
 import { FaqSection } from "./components/FaqSection";
 import { ServicesSection } from "./components/ServicesSection";
+import { BarbersSection } from "./components/BarbersSection";
 
 type Service = {
   id: string;
@@ -253,54 +254,7 @@ function App() {
 
       <ServicesSection services={services} loading={loading} error={error} />
 
-      <section id="barberos" className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mb-10">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-purple-400">
-            Barberos
-          </p>
-
-          <h2 className="mt-3 text-3xl font-black">
-            Profesionales disponibles
-          </h2>
-        </div>
-
-        {!loading && !error && (
-          <div className="grid gap-5 md:grid-cols-2">
-            {barbers.map((barber) => (
-              <article
-                key={barber.id}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-6"
-              >
-                <div className="mb-5 flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
-                    <UserRound size={24} />
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-bold">{barber.displayName}</h3>
-                    <p className="text-sm text-zinc-400">Barbero disponible</p>
-                  </div>
-                </div>
-
-                <p className="text-sm leading-6 text-zinc-400">
-                  {barber.bio || "Especialista en cortes y barba."}
-                </p>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {barber.services?.map((item) => (
-                    <span
-                      key={item.service.id}
-                      className="rounded-full bg-white/10 px-3 py-1 text-xs text-zinc-300"
-                    >
-                      {item.service.name}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <BarbersSection barbers={barbers} loading={loading} error={error} />
 
       <HowItWorks />
 
