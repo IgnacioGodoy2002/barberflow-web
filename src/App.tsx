@@ -3,7 +3,6 @@ import {
   CalendarDays,
   Clock,
   Loader2,
-  Scissors,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -22,6 +21,7 @@ import { GallerySection } from "./components/GallerySection";
 import { TestimonialsSection } from "./components/TestimonialsSection";
 import { ContactSection } from "./components/ContactSection";
 import { FaqSection } from "./components/FaqSection";
+import { ServicesSection } from "./components/ServicesSection";
 
 type Service = {
   id: string;
@@ -252,54 +252,7 @@ function App() {
 
       <FaqSection />
 
-      <section id="servicios" className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mb-10">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
-            Servicios
-          </p>
-
-          <h2 className="mt-3 text-3xl font-black">Elegí tu servicio</h2>
-        </div>
-
-        {loading && <LoadingMessage />}
-
-        {error && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-200">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => (
-              <article
-                key={service.id}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 transition hover:-translate-y-1 hover:bg-white/[0.07]"
-              >
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-300">
-                  <Scissors size={22} />
-                </div>
-
-                <h3 className="text-xl font-bold">{service.name}</h3>
-
-                <p className="mt-3 min-h-16 text-sm leading-6 text-zinc-400">
-                  {service.description || "Servicio profesional de barbería."}
-                </p>
-
-                <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-5">
-                  <span className="text-sm text-zinc-400">
-                    {service.durationMinutes} min + {service.bufferMinutes} min
-                  </span>
-
-                  <span className="text-lg font-bold">
-                    ${Number(service.price).toLocaleString("es-AR")}
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <ServicesSection services={services} loading={loading} error={error} />
 
       <section id="barberos" className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-10">
@@ -390,15 +343,6 @@ function InfoCard({
         <p className="font-semibold">{title}</p>
         <p className="text-sm text-zinc-400">{text}</p>
       </div>
-    </div>
-  );
-}
-
-function LoadingMessage() {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-zinc-300">
-      <Loader2 className="animate-spin" size={20} />
-      Cargando datos desde BarberFlow API...
     </div>
   );
 }
