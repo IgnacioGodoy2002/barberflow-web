@@ -1,14 +1,26 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
+  Edit3,
   Filter,
   Loader2,
   RefreshCcw,
+  Save,
   Search,
   UserRound,
   XCircle,
 } from "lucide-react";
 import { API_URL } from "../config/api";
+
+type Service = {
+  id: string;
+  name: string;
+};
+
+type Barber = {
+  id: string;
+  displayName: string;
+};
 
 type Appointment = {
   id: string;
@@ -16,13 +28,13 @@ type Appointment = {
   status: string;
   notes?: string;
   client?: {
-    name?: string;
     fullName?: string;
+    name?: string;
     email?: string;
   };
   user?: {
-    name?: string;
     fullName?: string;
+    name?: string;
     email?: string;
   };
   barber?: {
@@ -30,13 +42,18 @@ type Appointment = {
     displayName?: string;
   };
   service?: {
+    id?: string;
     name?: string;
   };
 };
 
 export function AdminAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+
   const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const [message, setMessage] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,7 +61,19 @@ export function AdminAppointments() {
   const [barberFilter, setBarberFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
 
-  async function loadAppointments() {
+  const [editingAppointmentId, setEditingAppointmentId] = useState<
+    string | null
+  >(null);
+  const [editBarberId, setEditBarberId] = useState("");
+  const [editServiceId, setEditServiceId] = useState("");
+  const [editStartAt, setEditStartAt] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
     const token = localStorage.getItem("barberflow_admin_token");
 
     if (!token) {
@@ -56,31 +85,49 @@ export function AdminAppointments() {
       setLoadingAppointments(true);
       setMessage("");
 
-      const response = await fetch(`${API_URL}/v1/appointments`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const [appointmentsResponse, servicesResponse, barbersResponse] =
+        await Promise.all([
+          fetch(`${API_URL}/v1/appointments`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${API_URL}/v1/services`),
+          fetch(`${API_URL}/v1/barbers`),
+        ]);
 
-      const data = await response.json().catch(() => ({}));
+      const appointmentsData = await appointmentsResponse
+        .json()
+        .catch(() => ({}));
+      const servicesData = await servicesResponse.json().catch(() => []);
+      const barbersData = await barbersResponse.json().catch(() => []);
 
-      if (!response.ok) {
-        const apiMessage = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message || "No se pudieron cargar los turnos.";
+      if (!appointmentsResponse.ok) {
+        const apiMessage = Array.isArray(appointmentsData.message)
+          ? appointmentsData.message.join(", ")
+          : appointmentsData.message || "No se pudieron cargar los turnos.";
 
         setMessage(apiMessage);
         return;
       }
 
-      if (!Array.isArray(data)) {
-        setMessage("La API respondió con un formato inesperado.");
+      if (!servicesResponse.ok) {
+        setMessage("No se pudieron cargar los servicios.");
         return;
       }
 
-      setAppointments(data);
+      if (!barbersResponse.ok) {
+        setMessage("No se pudieron cargar los barberos.");
+        return;
+      }
 
-      if (data.length === 0) {
+      setAppointments(
+        Array.isArray(appointmentsData) ? appointmentsData : []
+      );
+      setServices(Array.isArray(servicesData) ? servicesData : []);
+      setBarbers(Array.isArray(barbersData) ? barbersData : []);
+
+      if (Array.isArray(appointmentsData) && appointmentsData.length === 0) {
         setMessage("Todavía no hay turnos registrados.");
       }
     } catch {
@@ -128,11 +175,93 @@ export function AdminAppointments() {
       }
 
       setMessage("Turno cancelado correctamente.");
-      await loadAppointments();
+      await loadData();
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
       setLoadingAppointments(false);
+    }
+  }
+
+  function startEditAppointment(appointment: Appointment) {
+    if (appointment.status === "CANCELLED") {
+      setMessage("No se puede editar un turno cancelado.");
+      return;
+    }
+
+    setEditingAppointmentId(appointment.id);
+    setEditBarberId(appointment.barber?.id || "");
+    setEditServiceId(appointment.service?.id || "");
+    setEditStartAt(toDateTimeLocal(appointment.startAt));
+    setEditNotes(appointment.notes || "");
+    setMessage("Editando turno seleccionado.");
+  }
+
+  function cancelEdit() {
+    setEditingAppointmentId(null);
+    setEditBarberId("");
+    setEditServiceId("");
+    setEditStartAt("");
+    setEditNotes("");
+  }
+
+  async function saveAppointmentChanges() {
+    const token = localStorage.getItem("barberflow_admin_token");
+
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
+
+    if (!editingAppointmentId) {
+      setMessage("Seleccioná un turno para editar.");
+      return;
+    }
+
+    if (!editBarberId || !editServiceId || !editStartAt) {
+      setMessage("Completá barbero, servicio y fecha/hora.");
+      return;
+    }
+
+    try {
+      setLoadingEdit(true);
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/v1/appointments/${editingAppointmentId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            barberId: editBarberId,
+            serviceId: editServiceId,
+            startAt: new Date(editStartAt).toISOString(),
+            notes: editNotes,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo editar el turno.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setMessage("Turno editado correctamente.");
+      cancelEdit();
+      await loadData();
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingEdit(false);
     }
   }
 
@@ -155,6 +284,12 @@ export function AdminAppointments() {
     return new Date(date).toLocaleDateString("en-CA", {
       timeZone: "America/Argentina/Buenos_Aires",
     });
+  }
+
+  function toDateTimeLocal(date: string) {
+    const parsedDate = new Date(date);
+    parsedDate.setMinutes(parsedDate.getMinutes() - parsedDate.getTimezoneOffset());
+    return parsedDate.toISOString().slice(0, 16);
   }
 
   function getStatusLabel(status: string) {
@@ -208,11 +343,15 @@ export function AdminAppointments() {
       }
     });
 
+    barbers.forEach((barber) => {
+      map.set(barber.id, barber.displayName);
+    });
+
     return Array.from(map.entries()).map(([id, displayName]) => ({
       id,
       displayName,
     }));
-  }, [appointments]);
+  }, [appointments, barbers]);
 
   const filteredAppointments = useMemo(() => {
     return appointments.filter((appointment) => {
@@ -263,7 +402,7 @@ export function AdminAppointments() {
         </div>
 
         <button
-          onClick={loadAppointments}
+          onClick={loadData}
           disabled={loadingAppointments}
           className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60 md:w-auto"
         >
@@ -280,6 +419,87 @@ export function AdminAppointments() {
           )}
         </button>
       </div>
+
+      {editingAppointmentId && (
+        <div className="mb-5 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <Edit3 size={18} className="text-blue-300" />
+            <h4 className="font-bold text-white">Editar turno</h4>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <select
+              value={editBarberId}
+              onChange={(event) => setEditBarberId(event.target.value)}
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+            >
+              <option value="">Seleccionar barbero</option>
+
+              {barberOptions.map((barber) => (
+                <option key={barber.id} value={barber.id}>
+                  {barber.displayName}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={editServiceId}
+              onChange={(event) => setEditServiceId(event.target.value)}
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+            >
+              <option value="">Seleccionar servicio</option>
+
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              value={editStartAt}
+              onChange={(event) => setEditStartAt(event.target.value)}
+              type="datetime-local"
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500 md:col-span-2"
+            />
+
+            <textarea
+              value={editNotes}
+              onChange={(event) => setEditNotes(event.target.value)}
+              placeholder="Notas del turno"
+              className="min-h-24 rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500 md:col-span-2"
+            />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={saveAppointmentChanges}
+              disabled={loadingEdit}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
+            >
+              {loadingEdit ? (
+                <>
+                  <Loader2 className="animate-spin" size={17} />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save size={17} />
+                  Guardar cambios
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={cancelEdit}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              <XCircle size={17} />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
         <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
@@ -446,16 +666,29 @@ export function AdminAppointments() {
                   )}
                 </div>
 
-                {appointment.status !== "CANCELLED" && (
-                  <button
-                    onClick={() => cancelAppointment(appointment.id)}
-                    disabled={loadingAppointments}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60 md:w-auto"
-                  >
-                    <XCircle size={17} />
-                    Cancelar
-                  </button>
-                )}
+                <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
+                  {appointment.status !== "CANCELLED" && (
+                    <button
+                      onClick={() => startEditAppointment(appointment)}
+                      disabled={loadingAppointments}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
+                    >
+                      <Edit3 size={17} />
+                      Editar
+                    </button>
+                  )}
+
+                  {appointment.status !== "CANCELLED" && (
+                    <button
+                      onClick={() => cancelAppointment(appointment.id)}
+                      disabled={loadingAppointments}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+                    >
+                      <XCircle size={17} />
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
