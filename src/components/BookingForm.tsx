@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -102,11 +102,28 @@ export function BookingForm({
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedBarber = barbers.find((barber) => barber.id === barberId);
-  const availableBarbers = serviceId
-  ? barbers.filter((barber) =>
+
+  const availableBarbers = useMemo(() => {
+    if (!serviceId) return barbers;
+
+    return barbers.filter((barber) =>
       barber.services?.some((item) => item.service.id === serviceId)
-    )
-  : barbers;
+    );
+  }, [serviceId, barbers]);
+
+  const availableServices = useMemo(() => {
+    if (!barberId) return services;
+
+    const barber = barbers.find((item) => item.id === barberId);
+
+    if (!barber) return services;
+
+    const barberServiceIds = new Set(
+      barber.services?.map((item) => item.service.id) || []
+    );
+
+    return services.filter((service) => barberServiceIds.has(service.id));
+  }, [barberId, services, barbers]);
 
   useEffect(() => {
     if (!initialSelectedServiceId) return;
@@ -121,8 +138,22 @@ export function BookingForm({
     setSlots([]);
     setSelectedSlot(null);
     setConfirmedBooking(null);
-    setMessage("Servicio seleccionado. Elegí barbero, fecha y consultá horarios.");
-  }, [initialSelectedServiceId, services]);
+
+    const currentBarber = barbers.find((barber) => barber.id === barberId);
+    const barberCanDoService = currentBarber?.services?.some(
+      (item) => item.service.id === initialSelectedServiceId
+    );
+
+    if (barberId && !barberCanDoService) {
+      setBarberId("");
+      setMessage(
+        "Servicio seleccionado. Elegí un barbero que realice este servicio."
+      );
+      return;
+    }
+
+    setMessage("Servicio seleccionado. Elegí fecha y consultá horarios.");
+  }, [initialSelectedServiceId, services, barbers, barberId]);
 
   useEffect(() => {
     if (!initialSelectedBarberId) return;
@@ -137,25 +168,71 @@ export function BookingForm({
     setSlots([]);
     setSelectedSlot(null);
     setConfirmedBooking(null);
-    setMessage("Barbero seleccionado. Elegí servicio, fecha y consultá horarios.");
-  }, [initialSelectedBarberId, barbers]);
-  useEffect(() => {
-  if (!serviceId || !barberId) return;
 
-  const barberStillAvailable = availableBarbers.some(
-    (barber) => barber.id === barberId
-  );
+    const selectedCardBarber = barbers.find(
+      (barber) => barber.id === initialSelectedBarberId
+    );
 
-  if (!barberStillAvailable) {
-    setBarberId("");
+    const barberCanDoCurrentService = selectedCardBarber?.services?.some(
+      (item) => item.service.id === serviceId
+    );
+
+    if (serviceId && !barberCanDoCurrentService) {
+      setServiceId("");
+      setMessage(
+        "Barbero seleccionado. Elegí un servicio que realice este barbero."
+      );
+      return;
+    }
+
+    setMessage("Barbero seleccionado. Elegí fecha y consultá horarios.");
+  }, [initialSelectedBarberId, barbers, serviceId]);
+
+  function resetAvailabilityState() {
     setSlots([]);
     setSelectedSlot(null);
     setConfirmedBooking(null);
-    setMessage(
-      "El barbero seleccionado no realiza este servicio. Elegí otro barbero."
-    );
   }
-}, [serviceId, barberId, availableBarbers]);
+
+  function handleServiceChange(nextServiceId: string) {
+    setServiceId(nextServiceId);
+    resetAvailabilityState();
+
+    if (!nextServiceId || !barberId) return;
+
+    const currentBarber = barbers.find((barber) => barber.id === barberId);
+
+    const barberCanDoService = currentBarber?.services?.some(
+      (item) => item.service.id === nextServiceId
+    );
+
+    if (!barberCanDoService) {
+      setBarberId("");
+      setMessage(
+        "El barbero seleccionado no realiza este servicio. Elegí otro barbero."
+      );
+    }
+  }
+
+  function handleBarberChange(nextBarberId: string) {
+    setBarberId(nextBarberId);
+    resetAvailabilityState();
+
+    if (!nextBarberId || !serviceId) return;
+
+    const nextBarber = barbers.find((barber) => barber.id === nextBarberId);
+
+    const barberCanDoService = nextBarber?.services?.some(
+      (item) => item.service.id === serviceId
+    );
+
+    if (!barberCanDoService) {
+      setServiceId("");
+      setMessage(
+        "El servicio seleccionado no lo realiza este barbero. Elegí otro servicio."
+      );
+    }
+  }
 
   async function searchAvailability() {
     if (!serviceId || !barberId || !date) {
@@ -387,22 +464,29 @@ export function BookingForm({
 
           <select
             value={serviceId}
-            onChange={(event) => {
-              setServiceId(event.target.value);
-              setSlots([]);
-              setSelectedSlot(null);
-              setConfirmedBooking(null);
-            }}
+            onChange={(event) => handleServiceChange(event.target.value)}
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="">Seleccionar servicio</option>
 
-            {services.map((service) => (
+            {availableServices.map((service) => (
               <option key={service.id} value={service.id}>
                 {service.name}
               </option>
             ))}
           </select>
+
+          {barberId && availableServices.length === 0 && (
+            <p className="mt-2 text-xs text-yellow-300">
+              Este barbero todavía no tiene servicios asignados.
+            </p>
+          )}
+
+          {barberId && availableServices.length > 0 && (
+            <p className="mt-2 text-xs text-zinc-500">
+              Mostrando servicios que realiza el barbero seleccionado.
+            </p>
+          )}
         </div>
 
         <div>
@@ -412,32 +496,29 @@ export function BookingForm({
 
           <select
             value={barberId}
-            onChange={(event) => {
-              setBarberId(event.target.value);
-              setSlots([]);
-              setSelectedSlot(null);
-              setConfirmedBooking(null);
-            }}
+            onChange={(event) => handleBarberChange(event.target.value)}
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="">Seleccionar barbero</option>
-{availableBarbers.map((barber) => (
-  <option key={barber.id} value={barber.id}>
-    {barber.displayName}
-  </option>
-))}
-          </select>
-          {serviceId && availableBarbers.length === 0 && (
-  <p className="mt-2 text-xs text-yellow-300">
-    No hay barberos asignados a este servicio.
-  </p>
-)}
 
-{serviceId && availableBarbers.length > 0 && (
-  <p className="mt-2 text-xs text-zinc-500">
-    Mostrando barberos que realizan el servicio seleccionado.
-  </p>
-)}
+            {availableBarbers.map((barber) => (
+              <option key={barber.id} value={barber.id}>
+                {barber.displayName}
+              </option>
+            ))}
+          </select>
+
+          {serviceId && availableBarbers.length === 0 && (
+            <p className="mt-2 text-xs text-yellow-300">
+              No hay barberos asignados a este servicio.
+            </p>
+          )}
+
+          {serviceId && availableBarbers.length > 0 && (
+            <p className="mt-2 text-xs text-zinc-500">
+              Mostrando barberos que realizan el servicio seleccionado.
+            </p>
+          )}
         </div>
 
         <div>
@@ -451,9 +532,7 @@ export function BookingForm({
             min={today}
             onChange={(event) => {
               setDate(event.target.value);
-              setSlots([]);
-              setSelectedSlot(null);
-              setConfirmedBooking(null);
+              resetAvailabilityState();
             }}
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           />
@@ -481,85 +560,85 @@ export function BookingForm({
       </div>
 
       {selectedService || selectedBarber ? (
-  <div className="mt-6 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5">
-    <div className="mb-4 flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white">
-        <CalendarDays size={20} />
-      </div>
+        <div className="mt-6 rounded-3xl border border-blue-500/20 bg-blue-500/10 p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white">
+              <CalendarDays size={20} />
+            </div>
 
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">
-          Selección actual
-        </p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">
+                Selección actual
+              </p>
 
-        <h3 className="text-lg font-black text-white">
-          Preparando tu reserva
-        </h3>
-      </div>
-    </div>
+              <h3 className="text-lg font-black text-white">
+                Preparando tu reserva
+              </h3>
+            </div>
+          </div>
 
-    <div className="grid gap-3 md:grid-cols-2">
-      <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
-          <Scissors size={17} className="text-blue-300" />
-          Servicio
-        </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+                <Scissors size={17} className="text-blue-300" />
+                Servicio
+              </div>
 
-        {selectedService ? (
-          <>
-            <p className="font-bold text-white">{selectedService.name}</p>
+              {selectedService ? (
+                <>
+                  <p className="font-bold text-white">{selectedService.name}</p>
 
-            <p className="mt-2 text-sm text-zinc-400">
-              Duración:{" "}
-              <span className="font-semibold text-zinc-200">
-                {selectedService.durationMinutes} min
-              </span>
-            </p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Duración:{" "}
+                    <span className="font-semibold text-zinc-200">
+                      {selectedService.durationMinutes} min
+                    </span>
+                  </p>
 
-            <p className="mt-1 text-sm text-zinc-400">
-              Precio:{" "}
-              <span className="font-semibold text-zinc-200">
-                ${Number(selectedService.price).toLocaleString("es-AR")}
-              </span>
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-zinc-500">
-            Todavía no seleccionaste un servicio.
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Precio:{" "}
+                    <span className="font-semibold text-zinc-200">
+                      ${Number(selectedService.price).toLocaleString("es-AR")}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  Todavía no seleccionaste un servicio.
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+                <UserRound size={17} className="text-purple-300" />
+                Barbero
+              </div>
+
+              {selectedBarber ? (
+                <>
+                  <p className="font-bold text-white">
+                    {selectedBarber.displayName}
+                  </p>
+
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Profesional seleccionado para este turno.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  Todavía no seleccionaste un barbero.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs leading-5 text-blue-100">
+            Cuando tengas servicio, barbero y fecha seleccionados, tocá “Ver
+            horarios disponibles” para consultar la agenda en tiempo real.
           </p>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
-          <UserRound size={17} className="text-purple-300" />
-          Barbero
         </div>
-
-        {selectedBarber ? (
-          <>
-            <p className="font-bold text-white">
-              {selectedBarber.displayName}
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-400">
-              Profesional seleccionado para este turno.
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-zinc-500">
-            Todavía no seleccionaste un barbero.
-          </p>
-        )}
-      </div>
-    </div>
-
-    <p className="mt-4 text-xs leading-5 text-blue-100">
-      Cuando tengas servicio, barbero y fecha seleccionados, tocá “Ver horarios
-      disponibles” para consultar la agenda en tiempo real.
-    </p>
-  </div>
-) : null}
+      ) : null}
 
       {message && (
         <div className="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
