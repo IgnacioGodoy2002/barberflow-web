@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   CalendarDays,
   Clock,
-  Loader2,
   ShieldCheck,
   Sparkles,
   UserRound,
