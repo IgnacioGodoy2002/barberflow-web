@@ -22,12 +22,14 @@ type BarbersSectionProps = {
   barbers: Barber[];
   loading: boolean;
   error: string;
+  onSelectBarber: (barberId: string) => void;
 };
 
 export function BarbersSection({
   barbers,
   loading,
   error,
+  onSelectBarber,
 }: BarbersSectionProps) {
   return (
     <section id="barberos" className="mx-auto max-w-6xl px-6 py-16">
@@ -139,13 +141,13 @@ export function BarbersSection({
                 )}
               </div>
 
-              <a
-                href="#reservar"
+              <button
+                onClick={() => onSelectBarber(barber.id)}
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
               >
                 <CalendarDays size={17} />
                 Reservar con este barbero
-              </a>
+              </button>
             </article>
           ))}
         </div>

@@ -13,12 +13,14 @@ type ServicesSectionProps = {
   services: Service[];
   loading: boolean;
   error: string;
+  onSelectService: (serviceId: string) => void;
 };
 
 export function ServicesSection({
   services,
   loading,
   error,
+  onSelectService,
 }: ServicesSectionProps) {
   function formatPrice(value: string | number) {
     const numberValue = Number(value);
@@ -136,13 +138,13 @@ export function ServicesSection({
                   el siguiente turno.
                 </p>
 
-                <a
-                  href="#reservar"
+                <button
+                  onClick={() => onSelectService(service.id)}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
                 >
                   <CalendarDays size={17} />
                   Reservar este servicio
-                </a>
+                </button>
               </div>
             </article>
           ))}

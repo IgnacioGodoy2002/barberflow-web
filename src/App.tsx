@@ -49,6 +49,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [selectedServiceFromCard, setSelectedServiceFromCard] = useState("");
+  const [selectedBarberFromCard, setSelectedBarberFromCard] = useState("");
+
   useEffect(() => {
     if (isAdminPage) {
       setLoading(false);
@@ -80,6 +83,25 @@ function App() {
 
     loadData();
   }, [isAdminPage]);
+
+  function scrollToBooking() {
+    setTimeout(() => {
+      document.getElementById("reservar")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+  }
+
+  function handleSelectService(serviceId: string) {
+    setSelectedServiceFromCard(serviceId);
+    scrollToBooking();
+  }
+
+  function handleSelectBarber(barberId: string) {
+    setSelectedBarberFromCard(barberId);
+    scrollToBooking();
+  }
 
   if (isAdminPage) {
     return <AdminPage />;
@@ -252,14 +274,30 @@ function App() {
 
       <FaqSection />
 
-      <ServicesSection services={services} loading={loading} error={error} />
+      <ServicesSection
+        services={services}
+        loading={loading}
+        error={error}
+        onSelectService={handleSelectService}
+      />
 
-      <BarbersSection barbers={barbers} loading={loading} error={error} />
+      <BarbersSection
+        barbers={barbers}
+        loading={loading}
+        error={error}
+        onSelectBarber={handleSelectBarber}
+      />
 
       <HowItWorks />
 
       <section id="reservar" className="mx-auto max-w-6xl px-6 py-16">
-        <BookingForm services={services} barbers={barbers} />
+        <BookingForm
+          services={services}
+          barbers={barbers}
+          initialSelectedServiceId={selectedServiceFromCard}
+          initialSelectedBarberId={selectedBarberFromCard}
+        />
+
         <MyAppointments />
       </section>
 

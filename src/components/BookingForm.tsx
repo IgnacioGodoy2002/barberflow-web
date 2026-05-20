@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -41,6 +41,8 @@ type AvailabilityResponse = {
 type BookingFormProps = {
   services: Service[];
   barbers: Barber[];
+  initialSelectedServiceId?: string;
+  initialSelectedBarberId?: string;
 };
 
 type ConfirmedBooking = {
@@ -53,7 +55,12 @@ type ConfirmedBooking = {
 
 type AuthTab = "login" | "register";
 
-export function BookingForm({ services, barbers }: BookingFormProps) {
+export function BookingForm({
+  services,
+  barbers,
+  initialSelectedServiceId,
+  initialSelectedBarberId,
+}: BookingFormProps) {
   const today = new Date().toLocaleDateString("en-CA", {
     timeZone: "America/Argentina/Buenos_Aires",
   });
@@ -93,6 +100,38 @@ export function BookingForm({ services, barbers }: BookingFormProps) {
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedBarber = barbers.find((barber) => barber.id === barberId);
+
+  useEffect(() => {
+    if (!initialSelectedServiceId) return;
+
+    const serviceExists = services.some(
+      (service) => service.id === initialSelectedServiceId
+    );
+
+    if (!serviceExists) return;
+
+    setServiceId(initialSelectedServiceId);
+    setSlots([]);
+    setSelectedSlot(null);
+    setConfirmedBooking(null);
+    setMessage("Servicio seleccionado. Elegí barbero, fecha y consultá horarios.");
+  }, [initialSelectedServiceId, services]);
+
+  useEffect(() => {
+    if (!initialSelectedBarberId) return;
+
+    const barberExists = barbers.some(
+      (barber) => barber.id === initialSelectedBarberId
+    );
+
+    if (!barberExists) return;
+
+    setBarberId(initialSelectedBarberId);
+    setSlots([]);
+    setSelectedSlot(null);
+    setConfirmedBooking(null);
+    setMessage("Barbero seleccionado. Elegí servicio, fecha y consultá horarios.");
+  }, [initialSelectedBarberId, barbers]);
 
   async function searchAvailability() {
     if (!serviceId || !barberId || !date) {
