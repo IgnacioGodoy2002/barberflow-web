@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Ban,
   CalendarClock,
   CalendarDays,
   CheckCircle2,
@@ -8,16 +9,17 @@ import {
   Scissors,
   ShieldCheck,
   UserRound,
-  Ban,
+  Users,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 import { AdminAppointments } from "./AdminAppointments";
 import { AdminAssignServices } from "./AdminAssignServices";
 import { AdminBarbers } from "./AdminBarbers";
+import { AdminClients } from "./AdminClients";
 import { AdminDashboard } from "./AdminDashboard";
+import { AdminScheduleBlocks } from "./AdminScheduleBlocks";
 import { AdminServices } from "./AdminServices";
 import { AdminWorkingHours } from "./AdminWorkingHours";
-import { AdminScheduleBlocks } from "./AdminScheduleBlocks";
 
 type AdminTab =
   | "services"
@@ -25,7 +27,8 @@ type AdminTab =
   | "assign"
   | "appointments"
   | "workingHours"
-  | "scheduleBlocks";
+  | "scheduleBlocks"
+  | "clients";
 
 const tabs = [
   {
@@ -54,10 +57,15 @@ const tabs = [
     icon: CalendarClock,
   },
   {
-  id: "scheduleBlocks",
-  label: "Bloqueos",
-  icon: Ban,
-},
+    id: "scheduleBlocks",
+    label: "Bloqueos",
+    icon: Ban,
+  },
+  {
+    id: "clients",
+    label: "Clientes",
+    icon: Users,
+  },
 ] as const;
 
 export function AdminPanel() {
@@ -129,14 +137,15 @@ export function AdminPanel() {
   }
 
   function renderContent() {
-  if (activeTab === "services") return <AdminServices />;
-  if (activeTab === "barbers") return <AdminBarbers />;
-  if (activeTab === "assign") return <AdminAssignServices />;
-  if (activeTab === "appointments") return <AdminAppointments />;
-  if (activeTab === "workingHours") return <AdminWorkingHours />;
+    if (activeTab === "services") return <AdminServices />;
+    if (activeTab === "barbers") return <AdminBarbers />;
+    if (activeTab === "assign") return <AdminAssignServices />;
+    if (activeTab === "appointments") return <AdminAppointments />;
+    if (activeTab === "workingHours") return <AdminWorkingHours />;
+    if (activeTab === "scheduleBlocks") return <AdminScheduleBlocks />;
 
-  return <AdminScheduleBlocks />;
-}
+    return <AdminClients />;
+  }
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab);
 
@@ -158,7 +167,7 @@ export function AdminPanel() {
 
           <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400">
             Iniciá sesión como administrador para gestionar servicios, barberos,
-            asignaciones, turnos y horarios.
+            asignaciones, turnos, horarios, bloqueos y clientes.
           </p>
         </div>
 
@@ -222,8 +231,8 @@ export function AdminPanel() {
           </h2>
 
           <p className="mt-2 max-w-2xl text-sm text-zinc-400 md:mt-3">
-            Gestioná servicios, barberos, asignaciones, turnos y horarios desde
-            un solo lugar.
+            Gestioná servicios, barberos, asignaciones, turnos, horarios,
+            bloqueos y clientes desde un solo lugar.
           </p>
         </div>
 
@@ -239,7 +248,7 @@ export function AdminPanel() {
       <AdminDashboard />
 
       <div className="mb-4 rounded-3xl border border-white/10 bg-zinc-950 p-2">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-7">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
