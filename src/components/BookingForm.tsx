@@ -102,6 +102,11 @@ export function BookingForm({
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedBarber = barbers.find((barber) => barber.id === barberId);
+  const availableBarbers = serviceId
+  ? barbers.filter((barber) =>
+      barber.services?.some((item) => item.service.id === serviceId)
+    )
+  : barbers;
 
   useEffect(() => {
     if (!initialSelectedServiceId) return;
@@ -134,6 +139,23 @@ export function BookingForm({
     setConfirmedBooking(null);
     setMessage("Barbero seleccionado. Elegí servicio, fecha y consultá horarios.");
   }, [initialSelectedBarberId, barbers]);
+  useEffect(() => {
+  if (!serviceId || !barberId) return;
+
+  const barberStillAvailable = availableBarbers.some(
+    (barber) => barber.id === barberId
+  );
+
+  if (!barberStillAvailable) {
+    setBarberId("");
+    setSlots([]);
+    setSelectedSlot(null);
+    setConfirmedBooking(null);
+    setMessage(
+      "El barbero seleccionado no realiza este servicio. Elegí otro barbero."
+    );
+  }
+}, [serviceId, barberId, availableBarbers]);
 
   async function searchAvailability() {
     if (!serviceId || !barberId || !date) {
@@ -399,13 +421,23 @@ export function BookingForm({
             className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="">Seleccionar barbero</option>
-
-            {barbers.map((barber) => (
-              <option key={barber.id} value={barber.id}>
-                {barber.displayName}
-              </option>
-            ))}
+{availableBarbers.map((barber) => (
+  <option key={barber.id} value={barber.id}>
+    {barber.displayName}
+  </option>
+))}
           </select>
+          {serviceId && availableBarbers.length === 0 && (
+  <p className="mt-2 text-xs text-yellow-300">
+    No hay barberos asignados a este servicio.
+  </p>
+)}
+
+{serviceId && availableBarbers.length > 0 && (
+  <p className="mt-2 text-xs text-zinc-500">
+    Mostrando barberos que realizan el servicio seleccionado.
+  </p>
+)}
         </div>
 
         <div>
