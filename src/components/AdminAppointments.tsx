@@ -5,6 +5,7 @@ import {
   Loader2,
   RefreshCcw,
   Search,
+  UserRound,
   XCircle,
 } from "lucide-react";
 import { API_URL } from "../config/api";
@@ -64,18 +65,23 @@ export function AdminAppointments() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setMessage(data.message || "No se pudieron cargar los turnos.");
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudieron cargar los turnos.";
+
+        setMessage(apiMessage);
         return;
       }
 
-      if (Array.isArray(data)) {
-        setAppointments(data);
-
-        if (data.length === 0) {
-          setMessage("Todavía no hay turnos registrados.");
-        }
-      } else {
+      if (!Array.isArray(data)) {
         setMessage("La API respondió con un formato inesperado.");
+        return;
+      }
+
+      setAppointments(data);
+
+      if (data.length === 0) {
+        setMessage("Todavía no hay turnos registrados.");
       }
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -113,7 +119,11 @@ export function AdminAppointments() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setMessage(data.message || "No se pudo cancelar el turno.");
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo cancelar el turno.";
+
+        setMessage(apiMessage);
         return;
       }
 
@@ -135,7 +145,7 @@ export function AdminAppointments() {
 
   function formatDate(date: string) {
     return new Intl.DateTimeFormat("es-AR", {
-      dateStyle: "full",
+      dateStyle: "medium",
       timeStyle: "short",
       timeZone: "America/Argentina/Buenos_Aires",
     }).format(new Date(date));
@@ -172,15 +182,13 @@ export function AdminAppointments() {
     return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
   }
 
-  function getClientText(appointment: Appointment) {
+  function getClientName(appointment: Appointment) {
     return (
       appointment.client?.fullName ||
       appointment.client?.name ||
       appointment.user?.fullName ||
       appointment.user?.name ||
-      appointment.client?.email ||
-      appointment.user?.email ||
-      "Sin datos"
+      "Sin nombre"
     );
   }
 
@@ -210,14 +218,14 @@ export function AdminAppointments() {
     return appointments.filter((appointment) => {
       const search = searchTerm.toLowerCase().trim();
 
-      const clientText = getClientText(appointment).toLowerCase();
+      const clientName = getClientName(appointment).toLowerCase();
       const clientEmail = getClientEmail(appointment).toLowerCase();
       const serviceName = appointment.service?.name?.toLowerCase() || "";
       const barberName = appointment.barber?.displayName?.toLowerCase() || "";
 
       const matchesSearch =
         !search ||
-        clientText.includes(search) ||
+        clientName.includes(search) ||
         clientEmail.includes(search) ||
         serviceName.includes(search) ||
         barberName.includes(search);
@@ -236,62 +244,60 @@ export function AdminAppointments() {
   }, [appointments, searchTerm, statusFilter, barberFilter, dateFilter]);
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 md:p-6">
+      <div className="mb-5 flex flex-col gap-4 md:mb-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600 text-white">
-            <CalendarDays size={22} />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-600 text-white md:h-12 md:w-12">
+            <CalendarDays size={21} />
           </div>
 
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-purple-300 md:text-sm">
               Turnos
             </p>
-            <h3 className="text-xl font-black text-white">
+
+            <h3 className="text-xl font-black text-white md:text-2xl">
               Gestión de turnos
             </h3>
-            <p className="mt-1 text-sm text-zinc-400">
-              Consultá, filtrá y cancelá reservas activas.
-            </p>
           </div>
         </div>
 
         <button
           onClick={loadAppointments}
           disabled={loadingAppointments}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60 md:w-auto"
         >
           {loadingAppointments ? (
             <>
-              <Loader2 className="animate-spin" size={18} />
+              <Loader2 className="animate-spin" size={17} />
               Cargando...
             </>
           ) : (
             <>
-              <RefreshCcw size={18} />
-              Actualizar turnos
+              <RefreshCcw size={17} />
+              Actualizar
             </>
           )}
         </button>
       </div>
 
-      <div className="mb-6 rounded-3xl border border-white/10 bg-zinc-950 p-5">
+      <div className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
         <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
-          <Filter size={18} />
+          <Filter size={17} />
           Filtros
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="relative">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
-              size={18}
+              size={17}
             />
 
             <input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar cliente, email, servicio..."
+              placeholder="Buscar cliente, email..."
               className="w-full rounded-2xl border border-white/10 bg-black px-11 py-3 text-sm text-white outline-none focus:border-purple-500"
             />
           </div>
@@ -314,6 +320,7 @@ export function AdminAppointments() {
             className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
           >
             <option value="ALL">Todos los barberos</option>
+
             {barberOptions.map((barber) => (
               <option key={barber.id} value={barber.id}>
                 {barber.displayName}
@@ -329,20 +336,19 @@ export function AdminAppointments() {
           />
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-zinc-400">
             Mostrando{" "}
             <span className="font-bold text-white">
               {filteredAppointments.length}
             </span>{" "}
             de{" "}
-            <span className="font-bold text-white">{appointments.length}</span>{" "}
-            turnos cargados.
+            <span className="font-bold text-white">{appointments.length}</span>
           </p>
 
           <button
             onClick={clearFilters}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 md:w-auto"
           >
             <XCircle size={16} />
             Limpiar filtros
@@ -351,7 +357,7 @@ export function AdminAppointments() {
       </div>
 
       {message && (
-        <div className="mb-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
+        <div className="mb-5 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-center text-sm text-yellow-200">
           {message}
         </div>
       )}
@@ -359,15 +365,19 @@ export function AdminAppointments() {
       {appointments.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6 text-center">
           <CalendarDays className="mx-auto mb-3 text-zinc-500" size={32} />
+
           <p className="font-bold text-white">No hay turnos cargados</p>
+
           <p className="mt-2 text-sm text-zinc-400">
-            Tocá “Actualizar turnos” para consultar las reservas registradas.
+            Tocá “Actualizar” para consultar las reservas registradas.
           </p>
         </div>
       ) : filteredAppointments.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-zinc-950 p-6 text-center">
           <Filter className="mx-auto mb-3 text-zinc-500" size={32} />
+
           <p className="font-bold text-white">No hay resultados</p>
+
           <p className="mt-2 text-sm text-zinc-400">
             Probá limpiar filtros o cambiar la búsqueda.
           </p>
@@ -377,7 +387,7 @@ export function AdminAppointments() {
           {filteredAppointments.map((appointment) => (
             <div
               key={appointment.id}
-              className="rounded-2xl border border-white/10 bg-zinc-950 p-5"
+              className="rounded-2xl border border-white/10 bg-zinc-950 p-4 md:p-5"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -395,37 +405,43 @@ export function AdminAppointments() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Cliente:{" "}
-                    <span className="text-zinc-200">
-                      {getClientText(appointment)}
-                    </span>
-                  </p>
+                  <div className="grid gap-1 text-sm text-zinc-400">
+                    <p className="flex items-center gap-2">
+                      <UserRound size={15} />
+                      Cliente:{" "}
+                      <span className="text-zinc-200">
+                        {getClientName(appointment)}
+                      </span>
+                    </p>
 
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Email:{" "}
-                    <span className="text-zinc-200">
-                      {getClientEmail(appointment)}
-                    </span>
-                  </p>
+                    <p>
+                      Email:{" "}
+                      <span className="text-zinc-200">
+                        {getClientEmail(appointment)}
+                      </span>
+                    </p>
 
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Barbero:{" "}
-                    <span className="text-zinc-200">
-                      {appointment.barber?.displayName || "Sin asignar"}
-                    </span>
-                  </p>
+                    <p>
+                      Barbero:{" "}
+                      <span className="text-zinc-200">
+                        {appointment.barber?.displayName || "Sin asignar"}
+                      </span>
+                    </p>
 
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Fecha:{" "}
-                    <span className="text-zinc-200">
-                      {formatDate(appointment.startAt)}
-                    </span>
-                  </p>
+                    <p>
+                      Fecha:{" "}
+                      <span className="text-zinc-200">
+                        {formatDate(appointment.startAt)}
+                      </span>
+                    </p>
+                  </div>
 
                   {appointment.notes && (
-                    <p className="mt-2 text-sm text-zinc-500">
-                      Nota: {appointment.notes}
+                    <p className="mt-3 rounded-2xl bg-white/[0.04] p-3 text-sm text-zinc-400">
+                      Nota:{" "}
+                      <span className="text-zinc-200">
+                        {appointment.notes}
+                      </span>
                     </p>
                   )}
                 </div>
@@ -434,10 +450,10 @@ export function AdminAppointments() {
                   <button
                     onClick={() => cancelAppointment(appointment.id)}
                     disabled={loadingAppointments}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60 md:w-auto"
                   >
-                    <XCircle size={18} />
-                    Cancelar turno
+                    <XCircle size={17} />
+                    Cancelar
                   </button>
                 )}
               </div>
