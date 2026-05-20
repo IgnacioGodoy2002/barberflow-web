@@ -8,6 +8,7 @@ import {
   Scissors,
   ShieldCheck,
   UserRound,
+  Ban,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 import { AdminAppointments } from "./AdminAppointments";
@@ -16,13 +17,15 @@ import { AdminBarbers } from "./AdminBarbers";
 import { AdminDashboard } from "./AdminDashboard";
 import { AdminServices } from "./AdminServices";
 import { AdminWorkingHours } from "./AdminWorkingHours";
+import { AdminScheduleBlocks } from "./AdminScheduleBlocks";
 
 type AdminTab =
   | "services"
   | "barbers"
   | "assign"
   | "appointments"
-  | "workingHours";
+  | "workingHours"
+  | "scheduleBlocks";
 
 const tabs = [
   {
@@ -50,6 +53,11 @@ const tabs = [
     label: "Horarios",
     icon: CalendarClock,
   },
+  {
+  id: "scheduleBlocks",
+  label: "Bloqueos",
+  icon: Ban,
+},
 ] as const;
 
 export function AdminPanel() {
@@ -121,13 +129,14 @@ export function AdminPanel() {
   }
 
   function renderContent() {
-    if (activeTab === "services") return <AdminServices />;
-    if (activeTab === "barbers") return <AdminBarbers />;
-    if (activeTab === "assign") return <AdminAssignServices />;
-    if (activeTab === "appointments") return <AdminAppointments />;
+  if (activeTab === "services") return <AdminServices />;
+  if (activeTab === "barbers") return <AdminBarbers />;
+  if (activeTab === "assign") return <AdminAssignServices />;
+  if (activeTab === "appointments") return <AdminAppointments />;
+  if (activeTab === "workingHours") return <AdminWorkingHours />;
 
-    return <AdminWorkingHours />;
-  }
+  return <AdminScheduleBlocks />;
+}
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab);
 
@@ -230,7 +239,7 @@ export function AdminPanel() {
       <AdminDashboard />
 
       <div className="mb-4 rounded-3xl border border-white/10 bg-zinc-950 p-2">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
