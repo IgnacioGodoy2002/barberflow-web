@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import {
   Ban,
-  CalendarX,
   Loader2,
   PlusCircle,
   RefreshCcw,
   Trash2,
-  UserRound,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 
