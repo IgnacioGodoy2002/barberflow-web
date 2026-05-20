@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Ban,
   CalendarCheck,
   CalendarClock,
   CalendarDays,
@@ -8,6 +9,7 @@ import {
   RefreshCcw,
   Scissors,
   UserRound,
+  Users,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 
@@ -15,6 +17,14 @@ type Appointment = {
   id: string;
   startAt: string;
   status: string;
+  client?: {
+    id?: string;
+    email?: string;
+  };
+  user?: {
+    id?: string;
+    email?: string;
+  };
 };
 
 type Service = {
@@ -25,10 +35,16 @@ type Barber = {
   id: string;
 };
 
+type ScheduleBlock = {
+  id: string;
+  isActive?: boolean;
+};
+
 export function AdminDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -77,9 +93,34 @@ export function AdminDashboard() {
         return;
       }
 
-      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
-      setServices(Array.isArray(servicesData) ? servicesData : []);
-      setBarbers(Array.isArray(barbersData) ? barbersData : []);
+      const safeAppointments = Array.isArray(appointmentsData)
+        ? appointmentsData
+        : [];
+
+      const safeServices = Array.isArray(servicesData) ? servicesData : [];
+
+      const safeBarbers = Array.isArray(barbersData) ? barbersData : [];
+
+      setAppointments(safeAppointments);
+      setServices(safeServices);
+      setBarbers(safeBarbers);
+
+      const blockResults = await Promise.allSettled(
+        safeBarbers.map((barber) =>
+          fetch(`${API_URL}/v1/schedule-blocks/barber/${barber.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }).then((response) => response.json())
+        )
+      );
+
+      const allBlocks = blockResults.flatMap((result) => {
+        if (result.status !== "fulfilled") return [];
+        return Array.isArray(result.value) ? result.value : [];
+      });
+
+      setBlocks(allBlocks);
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
@@ -113,9 +154,29 @@ export function AdminDashboard() {
     (appointment) => getArgentinaDate(appointment.startAt) === today
   ).length;
 
+  const totalClients = useMemo(() => {
+    const clients = new Set<string>();
+
+    appointments.forEach((appointment) => {
+      const clientKey =
+        appointment.client?.id ||
+        appointment.user?.id ||
+        appointment.client?.email ||
+        appointment.user?.email;
+
+      if (clientKey) {
+        clients.add(clientKey);
+      }
+    });
+
+    return clients.size;
+  }, [appointments]);
+
+  const activeBlocks = blocks.filter((block) => block.isActive !== false).length;
+
   const cards = [
     {
-      title: "Totales",
+      title: "Turnos",
       value: appointments.length,
       icon: CalendarDays,
       className: "border-purple-500/30 bg-purple-500/10 text-purple-300",
@@ -150,6 +211,18 @@ export function AdminDashboard() {
       icon: UserRound,
       className: "border-pink-500/30 bg-pink-500/10 text-pink-300",
     },
+    {
+      title: "Clientes",
+      value: totalClients,
+      icon: Users,
+      className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+    },
+    {
+      title: "Bloqueos",
+      value: activeBlocks,
+      icon: Ban,
+      className: "border-red-500/30 bg-red-500/10 text-red-300",
+    },
   ];
 
   return (
@@ -165,7 +238,7 @@ export function AdminDashboard() {
           </h3>
 
           <p className="mt-1 text-xs text-zinc-400 md:mt-2 md:text-sm">
-            Estado actual de turnos, servicios y barberos.
+            Estado actual de turnos, servicios, barberos, clientes y bloqueos.
           </p>
         </div>
 
@@ -194,7 +267,7 @@ export function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
 
