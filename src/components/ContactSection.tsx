@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   CalendarDays,
   Clock,
@@ -5,14 +6,37 @@ import {
   MessageCircle,
   Navigation,
   Phone,
+  Send,
+  UserRound,
 } from "lucide-react";
 
 export function ContactSection() {
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientMessage, setClientMessage] = useState("");
+
+  const phoneNumber = "5492320598170";
+
   const whatsappLink =
     "https://wa.me/5492320598170?text=Hola%20Nacho%2C%20quiero%20consultar%20por%20un%20turno";
 
   const mapsLink =
     "https://www.google.com/maps/search/?api=1&query=Hip%C3%B3lito%20Bouchard%202086";
+
+  function sendContactMessage() {
+    const message = `Hola Nacho, quiero hacer una consulta.
+
+Nombre: ${clientName || "No indicado"}
+Teléfono: ${clientPhone || "No indicado"}
+Consulta: ${clientMessage || "Quiero consultar por un turno."}`;
+
+    const encodedMessage = encodeURIComponent(message);
+
+    window.open(
+      `https://wa.me/${phoneNumber}?text=${encodedMessage}`,
+      "_blank"
+    );
+  }
 
   return (
     <section id="contacto" className="mx-auto max-w-6xl px-6 py-16">
@@ -108,6 +132,75 @@ export function ContactSection() {
             <MessageCircle size={18} />
             Escribir por WhatsApp
           </a>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-8">
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div>
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600 text-white">
+              <Send size={22} />
+            </div>
+
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-green-400">
+              Consulta rápida
+            </p>
+
+            <h3 className="mt-3 text-2xl font-black text-white md:text-3xl">
+              Mandá tu consulta directo por WhatsApp
+            </h3>
+
+            <p className="mt-3 text-sm leading-7 text-zinc-400">
+              Completá tus datos y se va a abrir WhatsApp con el mensaje listo
+              para enviar. Ideal para preguntar por horarios, precios, cortes o
+              disponibilidad.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="relative">
+              <UserRound
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                size={17}
+              />
+
+              <input
+                value={clientName}
+                onChange={(event) => setClientName(event.target.value)}
+                placeholder="Tu nombre"
+                className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-11 py-3 text-sm text-white outline-none focus:border-green-500"
+              />
+            </div>
+
+            <div className="relative">
+              <Phone
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                size={17}
+              />
+
+              <input
+                value={clientPhone}
+                onChange={(event) => setClientPhone(event.target.value)}
+                placeholder="Tu teléfono"
+                className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-11 py-3 text-sm text-white outline-none focus:border-green-500"
+              />
+            </div>
+
+            <textarea
+              value={clientMessage}
+              onChange={(event) => setClientMessage(event.target.value)}
+              placeholder="Escribí tu consulta..."
+              className="min-h-28 w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-green-500"
+            />
+
+            <button
+              onClick={sendContactMessage}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-500"
+            >
+              <MessageCircle size={18} />
+              Enviar consulta por WhatsApp
+            </button>
+          </div>
         </div>
       </div>
     </section>
