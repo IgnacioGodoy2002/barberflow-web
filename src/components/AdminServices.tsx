@@ -216,19 +216,20 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
   }
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 md:p-6">
+      <div className="mb-5 flex flex-col gap-4 md:mb-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
-            <Scissors size={22} />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white md:h-12 md:w-12">
+            <Scissors size={21} />
           </div>
 
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 md:text-sm">
               Servicios
             </p>
-            <h3 className="text-xl font-black text-white">
-              {editingServiceId ? "Editar servicio" : "Agregar nuevo servicio"}
+
+            <h3 className="text-xl font-black text-white md:text-2xl">
+              {editingServiceId ? "Editar servicio" : "Agregar servicio"}
             </h3>
           </div>
         </div>
@@ -236,23 +237,23 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
         <button
           onClick={loadServices}
           disabled={loadingList}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60 md:w-auto"
         >
           {loadingList ? (
             <>
-              <Loader2 className="animate-spin" size={18} />
+              <Loader2 className="animate-spin" size={17} />
               Cargando...
             </>
           ) : (
             <>
-              <RefreshCcw size={18} />
+              <RefreshCcw size={17} />
               Actualizar
             </>
           )}
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -268,21 +269,23 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
           className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
         />
 
-        <input
-          value={durationMinutes}
-          onChange={(event) => setDurationMinutes(event.target.value)}
-          placeholder="Duración en minutos"
-          type="number"
-          className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-        />
+        <div className="grid grid-cols-2 gap-3 md:col-span-2">
+          <input
+            value={durationMinutes}
+            onChange={(event) => setDurationMinutes(event.target.value)}
+            placeholder="Duración"
+            type="number"
+            className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+          />
 
-        <input
-          value={bufferMinutes}
-          onChange={(event) => setBufferMinutes(event.target.value)}
-          placeholder="Buffer en minutos"
-          type="number"
-          className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
-        />
+          <input
+            value={bufferMinutes}
+            onChange={(event) => setBufferMinutes(event.target.value)}
+            placeholder="Buffer"
+            type="number"
+            className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+          />
+        </div>
 
         <textarea
           value={description}
@@ -292,25 +295,25 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
         />
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button
           onClick={saveService}
           disabled={loadingSave}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60 md:text-base"
         >
           {loadingSave ? (
             <>
-              <Loader2 className="animate-spin" size={18} />
+              <Loader2 className="animate-spin" size={17} />
               Guardando...
             </>
           ) : editingServiceId ? (
             <>
-              <Save size={18} />
+              <Save size={17} />
               Guardar cambios
             </>
           ) : (
             <>
-              <PlusCircle size={18} />
+              <PlusCircle size={17} />
               Crear servicio
             </>
           )}
@@ -319,22 +322,24 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
         {editingServiceId && (
           <button
             onClick={resetForm}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10 md:text-base"
           >
-            <XCircle size={18} />
-            Cancelar edición
+            <XCircle size={17} />
+            Cancelar
           </button>
         )}
       </div>
 
       {message && (
-        <div className="mt-5 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
+        <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-center text-sm text-yellow-200">
           {message}
         </div>
       )}
 
-      <div className="mt-8">
-        <h4 className="mb-4 font-bold text-white">Servicios activos</h4>
+      <div className="mt-7 md:mt-8">
+        <h4 className="mb-4 text-lg font-bold text-white">
+          Servicios activos
+        </h4>
 
         {services.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 text-sm text-zinc-400">
@@ -345,13 +350,15 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
             {services.map((service) => (
               <div
                 key={service.id}
-                className="rounded-2xl border border-white/10 bg-zinc-950 p-4"
+                className="rounded-2xl border border-white/10 bg-zinc-950 p-4 md:p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-bold text-white">{service.name}</p>
+                    <p className="text-lg font-bold text-white">
+                      {service.name}
+                    </p>
 
-                    <p className="mt-1 text-sm text-zinc-400">
+                    <p className="mt-1 text-sm leading-6 text-zinc-400">
                       {service.description || "Sin descripción"}
                     </p>
 
@@ -361,10 +368,10 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
                     <button
                       onClick={() => startEdit(service)}
-                      className="inline-flex items-center gap-2 rounded-full border border-blue-500/40 px-4 py-2 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10"
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-4 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10"
                     >
                       <Edit3 size={16} />
                       Editar
@@ -373,7 +380,7 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
                     <button
                       onClick={() => deactivateService(service)}
                       disabled={loadingDeleteId === service.id}
-                      className="inline-flex items-center gap-2 rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/40 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
                     >
                       {loadingDeleteId === service.id ? (
                         <Loader2 className="animate-spin" size={16} />
