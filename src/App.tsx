@@ -2,9 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   CalendarDays,
   Clock,
+  Menu,
   ShieldCheck,
   Sparkles,
   UserRound,
+  X,
 } from "lucide-react";
 import "./App.css";
 import logoBarberia from "./assets/logo-barberia-pro.png";
@@ -41,6 +43,14 @@ type Barber = {
   }[];
 };
 
+const navLinks = [
+  { label: "Sobre", href: "#sobre" },
+  { label: "Galería", href: "#galeria" },
+  { label: "Testimonios", href: "#testimonios" },
+  { label: "Contacto", href: "#contacto" },
+  { label: "FAQ", href: "#faq" },
+];
+
 function App() {
   const isAdminPage = window.location.pathname === "/admin";
 
@@ -51,6 +61,7 @@ function App() {
 
   const [selectedServiceFromCard, setSelectedServiceFromCard] = useState("");
   const [selectedBarberFromCard, setSelectedBarberFromCard] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (isAdminPage) {
@@ -103,6 +114,10 @@ function App() {
     scrollToBooking();
   }
 
+  function closeMobileMenu() {
+    setIsMobileMenuOpen(false);
+  }
+
   if (isAdminPage) {
     return <AdminPage />;
   }
@@ -112,82 +127,100 @@ function App() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.25),_transparent_35%),radial-gradient(circle_at_top_left,_rgba(168,85,247,0.18),_transparent_30%)]" />
 
-        <div className="relative mx-auto max-w-6xl px-6 py-20">
-          <nav className="mb-16 flex flex-col gap-6 md:mb-20 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-              <div className="flex h-24 w-24 items-center justify-center rounded-3xl border border-white/10 bg-zinc-900 p-1.5 shadow-xl shadow-black/40 sm:h-32 sm:w-32 md:h-40 md:w-40">
-                <img
-                  src={logoBarberia}
-                  alt="Logo de Nacho Barbershop"
-                  className="h-full w-full rounded-2xl object-contain"
-                />
+        <div className="relative mx-auto max-w-6xl px-6 py-8 md:py-20">
+          <nav className="mb-12 md:mb-20">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-zinc-900 p-1.5 shadow-xl shadow-black/40 sm:h-24 sm:w-24 md:h-32 md:w-32">
+                  <img
+                    src={logoBarberia}
+                    alt="Logo de Nacho Barbershop"
+                    className="h-full w-full rounded-2xl object-contain"
+                  />
+                </div>
+
+                <div>
+                  <p className="text-xl font-black text-white sm:text-2xl">
+                    Nacho Barbershop
+                  </p>
+
+                  <p className="text-sm text-zinc-300">
+                    BarberFlow · Turnos inteligentes
+                  </p>
+
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Hipólito Bouchard 2086
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <p className="text-2xl font-black text-white">
-                  Nacho Barbershop
-                </p>
+              <div className="hidden flex-wrap items-center justify-end gap-3 lg:flex">
+                {navLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
+                  >
+                    {link.label}
+                  </a>
+                ))}
 
-                <p className="text-sm text-zinc-300">
-                  BarberFlow · Turnos inteligentes
-                </p>
+                <a
+                  href="#reservar"
+                  className="rounded-full bg-white px-5 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                >
+                  Reservar
+                </a>
 
-                <p className="mt-1 text-xs text-zinc-500">
-                  Hipólito Bouchard 2086
-                </p>
+                <a
+                  href="/admin"
+                  className="rounded-full border border-purple-500/40 px-5 py-2 text-center text-sm font-semibold text-purple-300 transition hover:bg-purple-500/10"
+                >
+                  Panel interno
+                </a>
               </div>
+
+              <button
+                onClick={() => setIsMobileMenuOpen((current) => !current)}
+                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white transition hover:bg-white/10 lg:hidden"
+                aria-label="Abrir menú"
+              >
+                {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center md:justify-end">
-              <a
-                href="#sobre"
-                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
-              >
-                Sobre
-              </a>
+            {isMobileMenuOpen && (
+              <div className="mt-5 rounded-3xl border border-white/10 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur lg:hidden">
+                <div className="grid gap-3">
+                  {navLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={closeMobileMenu}
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
 
-              <a
-                href="#galeria"
-                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
-              >
-                Galería
-              </a>
+                  <a
+                    href="#reservar"
+                    onClick={closeMobileMenu}
+                    className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                  >
+                    Reservar turno
+                  </a>
 
-              <a
-                href="#testimonios"
-                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
-              >
-                Testimonios
-              </a>
-
-              <a
-                href="#contacto"
-                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
-              >
-                Contacto
-              </a>
-
-              <a
-                href="#faq"
-                className="rounded-full border border-white/10 px-5 py-2 text-center text-sm font-semibold text-zinc-300 transition hover:bg-white/10"
-              >
-                FAQ
-              </a>
-
-              <a
-                href="#reservar"
-                className="rounded-full bg-white px-5 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Reservar
-              </a>
-
-              <a
-                href="/admin"
-                className="rounded-full border border-purple-500/40 px-5 py-2 text-center text-sm font-semibold text-purple-300 transition hover:bg-purple-500/10"
-              >
-                Panel interno
-              </a>
-            </div>
+                  <a
+                    href="/admin"
+                    onClick={closeMobileMenu}
+                    className="rounded-2xl border border-purple-500/40 bg-purple-500/10 px-5 py-3 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/20"
+                  >
+                    Panel interno
+                  </a>
+                </div>
+              </div>
+            )}
           </nav>
 
           <div className="grid items-center gap-12 lg:grid-cols-2">
