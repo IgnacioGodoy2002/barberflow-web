@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CalendarX,
   Clock,
+  DollarSign,
   Loader2,
   RefreshCcw,
   Scissors,
@@ -37,6 +38,7 @@ type Appointment = {
   service?: {
     id?: string;
     name?: string;
+    price?: string | number;
   };
 };
 
@@ -158,6 +160,30 @@ export function AdminDashboard() {
     }).format(new Date(date));
   }
 
+  function formatCurrency(value: number) {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  function getAppointmentPrice(appointment: Appointment) {
+    const price = Number(appointment.service?.price || 0);
+
+    if (Number.isNaN(price)) {
+      return 0;
+    }
+
+    return price;
+  }
+
+  function isRevenueAppointment(appointment: Appointment) {
+    return (
+      appointment.status === "CONFIRMED" || appointment.status === "COMPLETED"
+    );
+  }
+
   function getClientName(appointment: Appointment) {
     return (
       appointment.client?.fullName ||
@@ -211,6 +237,28 @@ export function AdminDashboard() {
   }, [appointments]);
 
   const activeBlocks = blocks.filter((block) => block.isActive !== false).length;
+
+  const estimatedTodayIncome = useMemo(() => {
+    return appointments
+      .filter(
+        (appointment) =>
+          getArgentinaDate(appointment.startAt) === today &&
+          isRevenueAppointment(appointment)
+      )
+      .reduce((total, appointment) => total + getAppointmentPrice(appointment), 0);
+  }, [appointments, today]);
+
+  const estimatedTotalIncome = useMemo(() => {
+    return appointments
+      .filter((appointment) => isRevenueAppointment(appointment))
+      .reduce((total, appointment) => total + getAppointmentPrice(appointment), 0);
+  }, [appointments]);
+
+  const completedIncome = useMemo(() => {
+    return appointments
+      .filter((appointment) => appointment.status === "COMPLETED")
+      .reduce((total, appointment) => total + getAppointmentPrice(appointment), 0);
+  }, [appointments]);
 
   const todayUpcomingAppointments = useMemo(() => {
     return appointments
@@ -290,7 +338,7 @@ export function AdminDashboard() {
           </h3>
 
           <p className="mt-1 text-xs text-zinc-400 md:mt-2 md:text-sm">
-            Estado actual de turnos, servicios, barberos, clientes y bloqueos.
+            Estado actual de turnos, ingresos, servicios, clientes y bloqueos.
           </p>
         </div>
 
@@ -318,6 +366,74 @@ export function AdminDashboard() {
           {message}
         </div>
       )}
+
+      <div className="mb-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-300">
+                Ingresos hoy
+              </p>
+
+              <p className="mt-2 text-2xl font-black text-white md:text-3xl">
+                {formatCurrency(estimatedTodayIncome)}
+              </p>
+
+              <p className="mt-1 text-xs text-green-100">
+                Confirmados y completados de hoy.
+              </p>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-green-500/30 bg-green-500/10 text-green-300">
+              <DollarSign size={22} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
+                Ingresos estimados
+              </p>
+
+              <p className="mt-2 text-2xl font-black text-white md:text-3xl">
+                {formatCurrency(estimatedTotalIncome)}
+              </p>
+
+              <p className="mt-1 text-xs text-blue-100">
+                Total confirmados y completados.
+              </p>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/10 text-blue-300">
+              <DollarSign size={22} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">
+                Ingresos atendidos
+              </p>
+
+              <p className="mt-2 text-2xl font-black text-white md:text-3xl">
+                {formatCurrency(completedIncome)}
+              </p>
+
+              <p className="mt-1 text-xs text-purple-100">
+                Solo turnos completados.
+              </p>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-purple-300">
+              <DollarSign size={22} />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((card) => {
