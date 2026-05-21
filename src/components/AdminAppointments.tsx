@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Edit3,
@@ -48,6 +48,8 @@ type Appointment = {
 };
 
 export function AdminAppointments() {
+  const editFormRef = useRef<HTMLDivElement | null>(null);
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
@@ -121,9 +123,7 @@ export function AdminAppointments() {
         return;
       }
 
-      setAppointments(
-        Array.isArray(appointmentsData) ? appointmentsData : []
-      );
+      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
       setServices(Array.isArray(servicesData) ? servicesData : []);
       setBarbers(Array.isArray(barbersData) ? barbersData : []);
 
@@ -195,6 +195,13 @@ export function AdminAppointments() {
     setEditStartAt(toDateTimeLocal(appointment.startAt));
     setEditNotes(appointment.notes || "");
     setMessage("Editando turno seleccionado.");
+
+    setTimeout(() => {
+      editFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   }
 
   function cancelEdit() {
@@ -288,7 +295,9 @@ export function AdminAppointments() {
 
   function toDateTimeLocal(date: string) {
     const parsedDate = new Date(date);
-    parsedDate.setMinutes(parsedDate.getMinutes() - parsedDate.getTimezoneOffset());
+    parsedDate.setMinutes(
+      parsedDate.getMinutes() - parsedDate.getTimezoneOffset()
+    );
     return parsedDate.toISOString().slice(0, 16);
   }
 
@@ -421,7 +430,10 @@ export function AdminAppointments() {
       </div>
 
       {editingAppointmentId && (
-        <div className="mb-5 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+        <div
+          ref={editFormRef}
+          className="mb-5 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4"
+        >
           <div className="mb-4 flex items-center gap-2">
             <Edit3 size={18} className="text-blue-300" />
             <h4 className="font-bold text-white">Editar turno</h4>
