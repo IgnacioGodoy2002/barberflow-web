@@ -6,6 +6,7 @@ import {
   Loader2,
   LogIn,
   LogOut,
+  MessageCircle,
   ReceiptText,
   Scissors,
   UserPlus,
@@ -135,9 +136,7 @@ export function BookingForm({
     if (!serviceExists) return;
 
     setServiceId(initialSelectedServiceId);
-    setSlots([]);
-    setSelectedSlot(null);
-    setConfirmedBooking(null);
+    resetAvailabilityState();
 
     const currentBarber = barbers.find((barber) => barber.id === barberId);
     const barberCanDoService = currentBarber?.services?.some(
@@ -165,9 +164,7 @@ export function BookingForm({
     if (!barberExists) return;
 
     setBarberId(initialSelectedBarberId);
-    setSlots([]);
-    setSelectedSlot(null);
-    setConfirmedBooking(null);
+    resetAvailabilityState();
 
     const selectedCardBarber = barbers.find(
       (barber) => barber.id === initialSelectedBarberId
@@ -376,6 +373,24 @@ export function BookingForm({
     setEmail("");
     setPassword("");
     setMessage("Sesión cerrada.");
+  }
+
+  function sendBookingToWhatsApp() {
+    if (!confirmedBooking) return;
+
+    const message = `Hola Nacho, te paso el comprobante de mi turno:
+
+Servicio: ${confirmedBooking.serviceName}
+Barbero: ${confirmedBooking.barberName}
+Fecha: ${confirmedBooking.date}
+Hora: ${confirmedBooking.time}
+Notas: ${confirmedBooking.notes || "Sin notas"}
+
+Gracias.`;
+
+    const encodedMessage = encodeURIComponent(message);
+
+    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
   }
 
   async function confirmBooking() {
@@ -705,6 +720,14 @@ export function BookingForm({
             Guardá esta información. También podés consultar la reserva en la
             sección “Mis turnos”.
           </p>
+
+          <button
+            onClick={sendBookingToWhatsApp}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-500"
+          >
+            <MessageCircle size={18} />
+            Enviar comprobante por WhatsApp
+          </button>
         </div>
       )}
 
