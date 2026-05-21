@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
+  CheckCircle2,
   Edit3,
   Filter,
   Loader2,
@@ -8,6 +9,7 @@ import {
   Save,
   Search,
   UserRound,
+  UserX,
   XCircle,
 } from "lucide-react";
 import { API_URL } from "../config/api";
@@ -22,10 +24,17 @@ type Barber = {
   displayName: string;
 };
 
+type AppointmentStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "COMPLETED"
+  | "NO_SHOW";
+
 type Appointment = {
   id: string;
   startAt: string;
-  status: string;
+  status: AppointmentStatus | string;
   notes?: string;
   client?: {
     fullName?: string;
@@ -56,6 +65,7 @@ export function AdminAppointments() {
 
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [loadingStatusId, setLoadingStatusId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +84,19 @@ export function AdminAppointments() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!editingAppointmentId) return;
+
+    const timer = window.setTimeout(() => {
+      editFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [editingAppointmentId]);
 
   async function loadData() {
     const token = localStorage.getItem("barberflow_admin_token");
@@ -183,6 +206,68 @@ export function AdminAppointments() {
     }
   }
 
+  async function updateAppointmentStatus(
+    appointmentId: string,
+    status: "CONFIRMED" | "COMPLETED" | "NO_SHOW"
+  ) {
+    const token = localStorage.getItem("barberflow_admin_token");
+
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
+
+    const statusText =
+      status === "COMPLETED"
+        ? "completado"
+        : status === "NO_SHOW"
+        ? "no asistió"
+        : "confirmado";
+
+    const confirmed = window.confirm(
+      `¿Seguro que querés marcar este turno como ${statusText}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setLoadingStatusId(appointmentId);
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/v1/appointments/${appointmentId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo actualizar el estado del turno.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setMessage(`Turno marcado como ${statusText}.`);
+      await loadData();
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingStatusId(null);
+    }
+  }
+
   function startEditAppointment(appointment: Appointment) {
     if (appointment.status === "CANCELLED") {
       setMessage("No se puede editar un turno cancelado.");
@@ -195,13 +280,6 @@ export function AdminAppointments() {
     setEditStartAt(toDateTimeLocal(appointment.startAt));
     setEditNotes(appointment.notes || "");
     setMessage("Editando turno seleccionado.");
-
-    setTimeout(() => {
-      editFormRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
   }
 
   function cancelEdit() {
@@ -306,6 +384,7 @@ export function AdminAppointments() {
     if (status === "CANCELLED") return "Cancelado";
     if (status === "PENDING") return "Pendiente";
     if (status === "COMPLETED") return "Completado";
+    if (status === "NO_SHOW") return "No asistió";
 
     return status;
   }
@@ -321,6 +400,10 @@ export function AdminAppointments() {
 
     if (status === "COMPLETED") {
       return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+    }
+
+    if (status === "NO_SHOW") {
+      return "border-orange-500/30 bg-orange-500/10 text-orange-300";
     }
 
     return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
@@ -544,6 +627,7 @@ export function AdminAppointments() {
             <option value="CANCELLED">Cancelados</option>
             <option value="PENDING">Pendientes</option>
             <option value="COMPLETED">Completados</option>
+            <option value="NO_SHOW">No asistió</option>
           </select>
 
           <select
@@ -682,7 +766,10 @@ export function AdminAppointments() {
                   {appointment.status !== "CANCELLED" && (
                     <button
                       onClick={() => startEditAppointment(appointment)}
-                      disabled={loadingAppointments}
+                      disabled={
+                        loadingAppointments ||
+                        loadingStatusId === appointment.id
+                      }
                       className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
                     >
                       <Edit3 size={17} />
@@ -690,10 +777,67 @@ export function AdminAppointments() {
                     </button>
                   )}
 
+                  {appointment.status !== "CANCELLED" &&
+                    appointment.status !== "COMPLETED" && (
+                      <button
+                        onClick={() =>
+                          updateAppointmentStatus(appointment.id, "COMPLETED")
+                        }
+                        disabled={loadingStatusId === appointment.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10 disabled:opacity-60"
+                      >
+                        {loadingStatusId === appointment.id ? (
+                          <Loader2 className="animate-spin" size={17} />
+                        ) : (
+                          <CheckCircle2 size={17} />
+                        )}
+                        Completado
+                      </button>
+                    )}
+
+                  {appointment.status !== "CANCELLED" &&
+                    appointment.status !== "NO_SHOW" && (
+                      <button
+                        onClick={() =>
+                          updateAppointmentStatus(appointment.id, "NO_SHOW")
+                        }
+                        disabled={loadingStatusId === appointment.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-orange-500/40 px-5 py-2.5 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-60"
+                      >
+                        {loadingStatusId === appointment.id ? (
+                          <Loader2 className="animate-spin" size={17} />
+                        ) : (
+                          <UserX size={17} />
+                        )}
+                        No asistió
+                      </button>
+                    )}
+
+                  {appointment.status !== "CANCELLED" &&
+                    appointment.status !== "CONFIRMED" && (
+                      <button
+                        onClick={() =>
+                          updateAppointmentStatus(appointment.id, "CONFIRMED")
+                        }
+                        disabled={loadingStatusId === appointment.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-yellow-500/40 px-5 py-2.5 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-500/10 disabled:opacity-60"
+                      >
+                        {loadingStatusId === appointment.id ? (
+                          <Loader2 className="animate-spin" size={17} />
+                        ) : (
+                          <RefreshCcw size={17} />
+                        )}
+                        Reconfirmar
+                      </button>
+                    )}
+
                   {appointment.status !== "CANCELLED" && (
                     <button
                       onClick={() => cancelAppointment(appointment.id)}
-                      disabled={loadingAppointments}
+                      disabled={
+                        loadingAppointments ||
+                        loadingStatusId === appointment.id
+                      }
                       className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
                     >
                       <XCircle size={17} />
