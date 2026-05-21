@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  Download,
   Edit3,
   Filter,
   Loader2,
@@ -36,15 +37,18 @@ type Appointment = {
   startAt: string;
   status: AppointmentStatus | string;
   notes?: string;
+  cancelReason?: string;
   client?: {
     fullName?: string;
     name?: string;
     email?: string;
+    phone?: string;
   };
   user?: {
     fullName?: string;
     name?: string;
     email?: string;
+    phone?: string;
   };
   barber?: {
     id?: string;
@@ -53,6 +57,7 @@ type Appointment = {
   service?: {
     id?: string;
     name?: string;
+    price?: string | number;
   };
 };
 
@@ -423,6 +428,81 @@ export function AdminAppointments() {
     return appointment.client?.email || appointment.user?.email || "Sin email";
   }
 
+  function getClientPhone(appointment: Appointment) {
+    return appointment.client?.phone || appointment.user?.phone || "Sin teléfono";
+  }
+
+  function getPrice(appointment: Appointment) {
+    const price = Number(appointment.service?.price || 0);
+
+    if (Number.isNaN(price)) return 0;
+
+    return price;
+  }
+
+  function escapeCsvValue(value: string | number) {
+    const text = String(value ?? "");
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+
+  function exportFilteredAppointmentsToCsv() {
+    if (filteredAppointments.length === 0) {
+      setMessage("No hay turnos para exportar con los filtros actuales.");
+      return;
+    }
+
+    const headers = [
+      "ID",
+      "Fecha",
+      "Estado",
+      "Cliente",
+      "Email",
+      "Telefono",
+      "Servicio",
+      "Barbero",
+      "Precio",
+      "Notas",
+      "Motivo cancelacion",
+    ];
+
+    const rows = filteredAppointments.map((appointment) => [
+      appointment.id,
+      formatDate(appointment.startAt),
+      getStatusLabel(appointment.status),
+      getClientName(appointment),
+      getClientEmail(appointment),
+      getClientPhone(appointment),
+      appointment.service?.name || "Sin servicio",
+      appointment.barber?.displayName || "Sin barbero",
+      getPrice(appointment),
+      appointment.notes || "",
+      appointment.cancelReason || "",
+    ]);
+
+    const csvContent = [
+      headers.map(escapeCsvValue).join(";"),
+...rows.map((row) => row.map(escapeCsvValue).join(";")),
+    ].join("\n");
+
+    const blob = new Blob([`\uFEFF${csvContent}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    const todayForFile = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+
+    link.href = url;
+    link.download = `turnos-barberflow-${todayForFile}.csv`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+    setMessage("Archivo CSV generado correctamente.");
+  }
+
   const barberOptions = useMemo(() => {
     const map = new Map<string, string>();
 
@@ -662,13 +742,23 @@ export function AdminAppointments() {
             <span className="font-bold text-white">{appointments.length}</span>
           </p>
 
-          <button
-            onClick={clearFilters}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 md:w-auto"
-          >
-            <XCircle size={16} />
-            Limpiar filtros
-          </button>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <button
+              onClick={exportFilteredAppointmentsToCsv}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10 md:w-auto"
+            >
+              <Download size={16} />
+              Exportar CSV
+            </button>
+
+            <button
+              onClick={clearFilters}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 md:w-auto"
+            >
+              <XCircle size={16} />
+              Limpiar filtros
+            </button>
+          </div>
         </div>
       </div>
 
@@ -738,6 +828,13 @@ export function AdminAppointments() {
                     </p>
 
                     <p>
+                      Teléfono:{" "}
+                      <span className="text-zinc-200">
+                        {getClientPhone(appointment)}
+                      </span>
+                    </p>
+
+                    <p>
                       Barbero:{" "}
                       <span className="text-zinc-200">
                         {appointment.barber?.displayName || "Sin asignar"}
@@ -750,6 +847,13 @@ export function AdminAppointments() {
                         {formatDate(appointment.startAt)}
                       </span>
                     </p>
+
+                    <p>
+                      Precio:{" "}
+                      <span className="text-zinc-200">
+                        ${getPrice(appointment).toLocaleString("es-AR")}
+                      </span>
+                    </p>
                   </div>
 
                   {appointment.notes && (
@@ -758,6 +862,12 @@ export function AdminAppointments() {
                       <span className="text-zinc-200">
                         {appointment.notes}
                       </span>
+                    </p>
+                  )}
+
+                  {appointment.cancelReason && (
+                    <p className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
+                      Motivo de cancelación: {appointment.cancelReason}
                     </p>
                   )}
                 </div>
