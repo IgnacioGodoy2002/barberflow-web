@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarDays,
   CalendarX,
+  Clock,
   Loader2,
   RefreshCcw,
   Scissors,
@@ -19,11 +20,23 @@ type Appointment = {
   status: string;
   client?: {
     id?: string;
+    fullName?: string;
+    name?: string;
     email?: string;
   };
   user?: {
     id?: string;
+    fullName?: string;
+    name?: string;
     email?: string;
+  };
+  barber?: {
+    id?: string;
+    displayName?: string;
+  };
+  service?: {
+    id?: string;
+    name?: string;
   };
 };
 
@@ -98,7 +111,6 @@ export function AdminDashboard() {
         : [];
 
       const safeServices = Array.isArray(servicesData) ? servicesData : [];
-
       const safeBarbers = Array.isArray(barbersData) ? barbersData : [];
 
       setAppointments(safeAppointments);
@@ -138,6 +150,24 @@ export function AdminDashboard() {
     });
   }
 
+  function formatTime(date: string) {
+    return new Intl.DateTimeFormat("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Argentina/Buenos_Aires",
+    }).format(new Date(date));
+  }
+
+  function getClientName(appointment: Appointment) {
+    return (
+      appointment.client?.fullName ||
+      appointment.client?.name ||
+      appointment.user?.fullName ||
+      appointment.user?.name ||
+      "Cliente"
+    );
+  }
+
   const today = new Date().toLocaleDateString("en-CA", {
     timeZone: "America/Argentina/Buenos_Aires",
   });
@@ -148,6 +178,14 @@ export function AdminDashboard() {
 
   const cancelledAppointments = appointments.filter(
     (appointment) => appointment.status === "CANCELLED"
+  ).length;
+
+  const completedAppointments = appointments.filter(
+    (appointment) => appointment.status === "COMPLETED"
+  ).length;
+
+  const noShowAppointments = appointments.filter(
+    (appointment) => appointment.status === "NO_SHOW"
   ).length;
 
   const todayAppointments = appointments.filter(
@@ -173,6 +211,20 @@ export function AdminDashboard() {
   }, [appointments]);
 
   const activeBlocks = blocks.filter((block) => block.isActive !== false).length;
+
+  const todayUpcomingAppointments = useMemo(() => {
+    return appointments
+      .filter((appointment) => {
+        return (
+          getArgentinaDate(appointment.startAt) === today &&
+          appointment.status === "CONFIRMED"
+        );
+      })
+      .sort(
+        (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+      )
+      .slice(0, 5);
+  }, [appointments, today]);
 
   const cards = [
     {
@@ -296,6 +348,123 @@ export function AdminDashboard() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
+            Atendidos
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-white">
+            {completedAppointments}
+          </p>
+
+          <p className="mt-1 text-sm text-blue-100">
+            Turnos marcados como completados.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
+            No asistieron
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-white">
+            {noShowAppointments}
+          </p>
+
+          <p className="mt-1 text-sm text-orange-100">
+            Clientes marcados como no asistidos.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-3xl border border-white/10 bg-black p-4 md:p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">
+              Agenda de hoy
+            </p>
+
+            <h4 className="mt-1 text-lg font-black text-white">
+              Próximos turnos confirmados
+            </h4>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-200">
+            <Clock size={16} />
+            {todayUpcomingAppointments.length} pendientes
+          </div>
+        </div>
+
+        {todayUpcomingAppointments.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 text-center">
+            <CalendarDays className="mx-auto mb-3 text-zinc-500" size={32} />
+
+            <p className="font-bold text-white">
+              No quedan turnos confirmados para hoy
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              Cuando haya turnos confirmados del día, van a aparecer acá.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {todayUpcomingAppointments.map((appointment) => (
+              <div
+                key={appointment.id}
+                className="rounded-2xl border border-white/10 bg-zinc-950 p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-lg font-bold text-white">
+                        {formatTime(appointment.startAt)}
+                      </p>
+
+                      <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-300">
+                        Confirmado
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-sm text-zinc-400">
+                      Cliente:{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {getClientName(appointment)}
+                      </span>
+                    </p>
+
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Servicio:{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {appointment.service?.name || "Servicio"}
+                      </span>
+                    </p>
+
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Barbero:{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {appointment.barber?.displayName || "Sin asignar"}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-center">
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-yellow-300">
+                      Turno
+                    </p>
+
+                    <p className="mt-1 text-xl font-black text-white">
+                      {formatTime(appointment.startAt)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
