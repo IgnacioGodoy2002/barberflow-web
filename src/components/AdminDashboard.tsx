@@ -8,8 +8,10 @@ import {
   Clock,
   DollarSign,
   Loader2,
+  Medal,
   RefreshCcw,
   Scissors,
+  Trophy,
   UserRound,
   Users,
 } from "lucide-react";
@@ -184,6 +186,12 @@ export function AdminDashboard() {
     );
   }
 
+  function isValidRankingAppointment(appointment: Appointment) {
+    return (
+      appointment.status !== "CANCELLED" && appointment.status !== "NO_SHOW"
+    );
+  }
+
   function getClientName(appointment: Appointment) {
     return (
       appointment.client?.fullName ||
@@ -192,6 +200,10 @@ export function AdminDashboard() {
       appointment.user?.name ||
       "Cliente"
     );
+  }
+
+  function getClientEmail(appointment: Appointment) {
+    return appointment.client?.email || appointment.user?.email || "Sin email";
   }
 
   const today = new Date().toLocaleDateString("en-CA", {
@@ -245,19 +257,109 @@ export function AdminDashboard() {
           getArgentinaDate(appointment.startAt) === today &&
           isRevenueAppointment(appointment)
       )
-      .reduce((total, appointment) => total + getAppointmentPrice(appointment), 0);
+      .reduce(
+        (total, appointment) => total + getAppointmentPrice(appointment),
+        0
+      );
   }, [appointments, today]);
 
   const estimatedTotalIncome = useMemo(() => {
     return appointments
       .filter((appointment) => isRevenueAppointment(appointment))
-      .reduce((total, appointment) => total + getAppointmentPrice(appointment), 0);
+      .reduce(
+        (total, appointment) => total + getAppointmentPrice(appointment),
+        0
+      );
   }, [appointments]);
 
   const completedIncome = useMemo(() => {
     return appointments
       .filter((appointment) => appointment.status === "COMPLETED")
-      .reduce((total, appointment) => total + getAppointmentPrice(appointment), 0);
+      .reduce(
+        (total, appointment) => total + getAppointmentPrice(appointment),
+        0
+      );
+  }, [appointments]);
+
+  const serviceRanking = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        count: number;
+        income: number;
+      }
+    >();
+
+    appointments
+      .filter((appointment) => isValidRankingAppointment(appointment))
+      .forEach((appointment) => {
+        const serviceId = appointment.service?.id || "sin-servicio";
+        const serviceName = appointment.service?.name || "Sin servicio";
+        const current = map.get(serviceId);
+
+        if (!current) {
+          map.set(serviceId, {
+            id: serviceId,
+            name: serviceName,
+            count: 1,
+            income: getAppointmentPrice(appointment),
+          });
+          return;
+        }
+
+        current.count += 1;
+        current.income += getAppointmentPrice(appointment);
+      });
+
+    return Array.from(map.values())
+      .sort((a, b) => b.count - a.count || b.income - a.income)
+      .slice(0, 5);
+  }, [appointments]);
+
+  const clientRanking = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        email: string;
+        count: number;
+        income: number;
+      }
+    >();
+
+    appointments
+      .filter((appointment) => isValidRankingAppointment(appointment))
+      .forEach((appointment) => {
+        const clientId =
+          appointment.client?.id ||
+          appointment.user?.id ||
+          appointment.client?.email ||
+          appointment.user?.email ||
+          "sin-cliente";
+
+        const current = map.get(clientId);
+
+        if (!current) {
+          map.set(clientId, {
+            id: clientId,
+            name: getClientName(appointment),
+            email: getClientEmail(appointment),
+            count: 1,
+            income: getAppointmentPrice(appointment),
+          });
+          return;
+        }
+
+        current.count += 1;
+        current.income += getAppointmentPrice(appointment);
+      });
+
+    return Array.from(map.values())
+      .sort((a, b) => b.count - a.count || b.income - a.income)
+      .slice(0, 5);
   }, [appointments]);
 
   const todayUpcomingAppointments = useMemo(() => {
@@ -493,6 +595,138 @@ export function AdminDashboard() {
           <p className="mt-1 text-sm text-orange-100">
             Clientes marcados como no asistidos.
           </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl border border-white/10 bg-black p-4 md:p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-300">
+              <Trophy size={21} />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">
+                Ranking
+              </p>
+
+              <h4 className="text-lg font-black text-white">
+                Servicios más pedidos
+              </h4>
+            </div>
+          </div>
+
+          {serviceRanking.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 text-center">
+              <Scissors className="mx-auto mb-3 text-zinc-500" size={32} />
+
+              <p className="font-bold text-white">Sin datos suficientes</p>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                Cuando haya turnos activos, se va a armar el ranking.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {serviceRanking.map((service, index) => (
+                <div
+                  key={service.id}
+                  className="rounded-2xl border border-white/10 bg-zinc-950 p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-yellow-500/30 bg-yellow-500/10 text-sm font-black text-yellow-300">
+                        #{index + 1}
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-white">{service.name}</p>
+
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {service.count} turno{service.count === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Estimado</p>
+
+                      <p className="font-bold text-green-300">
+                        {formatCurrency(service.income)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-black p-4 md:p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-purple-300">
+              <Medal size={21} />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">
+                Clientes
+              </p>
+
+              <h4 className="text-lg font-black text-white">
+                Clientes frecuentes
+              </h4>
+            </div>
+          </div>
+
+          {clientRanking.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 text-center">
+              <Users className="mx-auto mb-3 text-zinc-500" size={32} />
+
+              <p className="font-bold text-white">Sin clientes frecuentes</p>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                Cuando los clientes reserven turnos, van a aparecer acá.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {clientRanking.map((client, index) => (
+                <div
+                  key={client.id}
+                  className="rounded-2xl border border-white/10 bg-zinc-950 p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-sm font-black text-purple-300">
+                        #{index + 1}
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-white">{client.name}</p>
+
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {client.email}
+                        </p>
+
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {client.count} turno{client.count === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Estimado</p>
+
+                      <p className="font-bold text-green-300">
+                        {formatCurrency(client.income)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
