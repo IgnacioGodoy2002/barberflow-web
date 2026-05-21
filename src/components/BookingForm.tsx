@@ -393,6 +393,17 @@ Gracias.`;
     window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
   }
 
+  function bookAgain() {
+    setServiceId("");
+    setBarberId("");
+    setDate(today);
+    setSlots([]);
+    setSelectedSlot(null);
+    setNotes("");
+    setConfirmedBooking(null);
+    setMessage("Podés elegir un nuevo servicio, barbero y fecha.");
+  }
+
   async function confirmBooking() {
     if (!selectedSlot) {
       setMessage("Seleccioná un horario.");
@@ -727,6 +738,14 @@ Gracias.`;
           >
             <MessageCircle size={18} />
             Enviar comprobante por WhatsApp
+          </button>
+
+          <button
+            onClick={bookAgain}
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            <CalendarDays size={18} />
+            Reservar otro turno
           </button>
         </div>
       )}
