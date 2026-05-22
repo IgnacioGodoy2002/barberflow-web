@@ -230,6 +230,10 @@ export function AdminDashboard() {
     return appointment.client?.email || appointment.user?.email || "Sin email";
   }
 
+  function getBarberName(appointment: Appointment) {
+    return appointment.barber?.displayName || "Sin barbero";
+  }
+
   function getPeriodLabel(selectedPeriod: DashboardPeriod) {
     if (selectedPeriod === "TODAY") return "Hoy";
     if (selectedPeriod === "WEEK") return "Esta semana";
@@ -425,6 +429,55 @@ export function AdminDashboard() {
 
         current.count += 1;
         current.income += getAppointmentPrice(appointment);
+      });
+
+    return Array.from(map.values())
+      .sort((a, b) => b.count - a.count || b.income - a.income)
+      .slice(0, 5);
+  }, [periodAppointments]);
+
+  const barberRanking = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        count: number;
+        income: number;
+        completed: number;
+        noShow: number;
+      }
+    >();
+
+    periodAppointments
+      .filter((appointment) => isValidRankingAppointment(appointment))
+      .forEach((appointment) => {
+        const barberId = appointment.barber?.id || "sin-barbero";
+        const barberName = getBarberName(appointment);
+        const current = map.get(barberId);
+
+        if (!current) {
+          map.set(barberId, {
+            id: barberId,
+            name: barberName,
+            count: 1,
+            income: getAppointmentPrice(appointment),
+            completed: appointment.status === "COMPLETED" ? 1 : 0,
+            noShow: appointment.status === "NO_SHOW" ? 1 : 0,
+          });
+          return;
+        }
+
+        current.count += 1;
+        current.income += getAppointmentPrice(appointment);
+
+        if (appointment.status === "COMPLETED") {
+          current.completed += 1;
+        }
+
+        if (appointment.status === "NO_SHOW") {
+          current.noShow += 1;
+        }
       });
 
     return Array.from(map.values())
@@ -701,7 +754,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <div className="mt-5 grid gap-4 xl:grid-cols-3">
         <div className="rounded-3xl border border-white/10 bg-black p-4 md:p-5">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-300">
@@ -825,6 +878,75 @@ export function AdminDashboard() {
 
                       <p className="font-bold text-green-300">
                         {formatCurrency(client.income)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-black p-4 md:p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-pink-500/30 bg-pink-500/10 text-pink-300">
+              <UserRound size={21} />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pink-300">
+                Barberos
+              </p>
+
+              <h4 className="text-lg font-black text-white">
+                Barberos con más turnos
+              </h4>
+            </div>
+          </div>
+
+          {barberRanking.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5 text-center">
+              <UserRound className="mx-auto mb-3 text-zinc-500" size={32} />
+
+              <p className="font-bold text-white">Sin datos de barberos</p>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                Cuando haya turnos activos en este período, se va a armar el
+                ranking.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {barberRanking.map((barber, index) => (
+                <div
+                  key={barber.id}
+                  className="rounded-2xl border border-white/10 bg-zinc-950 p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-pink-500/30 bg-pink-500/10 text-sm font-black text-pink-300">
+                        #{index + 1}
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-white">{barber.name}</p>
+
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {barber.count} turno{barber.count === 1 ? "" : "s"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {barber.completed} completado
+                          {barber.completed === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Estimado</p>
+
+                      <p className="font-bold text-green-300">
+                        {formatCurrency(barber.income)}
                       </p>
                     </div>
                   </div>
