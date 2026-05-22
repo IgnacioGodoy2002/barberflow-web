@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Filter,
   Loader2,
   RefreshCcw,
   UserRound,
@@ -46,6 +47,10 @@ export function AdminCalendar() {
   const [weekStart, setWeekStart] = useState(getCurrentWeekStart());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [barberFilter, setBarberFilter] = useState("ALL");
+  const [hideCancelled, setHideCancelled] = useState(false);
 
   useEffect(() => {
     loadAppointments();
@@ -129,6 +134,12 @@ export function AdminCalendar() {
     setWeekStart(getCurrentWeekStart());
   }
 
+  function clearFilters() {
+    setStatusFilter("ALL");
+    setBarberFilter("ALL");
+    setHideCancelled(false);
+  }
+
   function getArgentinaDate(date: string) {
     return new Date(date).toLocaleDateString("en-CA", {
       timeZone: "America/Argentina/Buenos_Aires",
@@ -139,6 +150,7 @@ export function AdminCalendar() {
     return new Intl.DateTimeFormat("es-AR", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
       timeZone: "America/Argentina/Buenos_Aires",
     }).format(new Date(date));
   }
@@ -236,6 +248,26 @@ export function AdminCalendar() {
     });
   }, [weekStart]);
 
+  const barberOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    appointments.forEach((appointment) => {
+      const barberId = appointment.barber?.id;
+      const barberName = appointment.barber?.displayName;
+
+      if (barberId && barberName) {
+        map.set(barberId, barberName);
+      }
+    });
+
+    return Array.from(map.entries())
+      .map(([id, displayName]) => ({
+        id,
+        displayName,
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [appointments]);
+
   const weekAppointments = useMemo(() => {
     const start = weekStart;
     const end = addDays(weekStart, 6);
@@ -249,6 +281,21 @@ export function AdminCalendar() {
         (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
       );
   }, [appointments, weekStart]);
+
+  const filteredWeekAppointments = useMemo(() => {
+    return weekAppointments.filter((appointment) => {
+      const matchesStatus =
+        statusFilter === "ALL" || appointment.status === statusFilter;
+
+      const matchesBarber =
+        barberFilter === "ALL" || appointment.barber?.id === barberFilter;
+
+      const matchesCancelled =
+        !hideCancelled || appointment.status !== "CANCELLED";
+
+      return matchesStatus && matchesBarber && matchesCancelled;
+    });
+  }, [weekAppointments, statusFilter, barberFilter, hideCancelled]);
 
   const confirmedCount = weekAppointments.filter(
     (appointment) => appointment.status === "CONFIRMED"
@@ -303,6 +350,7 @@ export function AdminCalendar() {
       <div className="mb-5 grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 md:col-span-2">
           <p className="text-xs text-zinc-500">Semana seleccionada</p>
+
           <p className="mt-1 text-xl font-black text-white">
             {formatWeekRange()}
           </p>
@@ -310,6 +358,7 @@ export function AdminCalendar() {
 
         <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
           <p className="text-xs text-green-300">Confirmados</p>
+
           <p className="mt-1 text-2xl font-black text-white">
             {confirmedCount}
           </p>
@@ -317,6 +366,7 @@ export function AdminCalendar() {
 
         <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
           <p className="text-xs text-blue-300">Completados</p>
+
           <p className="mt-1 text-2xl font-black text-white">
             {completedCount}
           </p>
@@ -353,9 +403,68 @@ export function AdminCalendar() {
           Total de turnos en esta semana:{" "}
           <span className="font-bold text-white">{weekAppointments.length}</span>
           {" · "}
+          Mostrando:{" "}
+          <span className="font-bold text-blue-300">
+            {filteredWeekAppointments.length}
+          </span>
+          {" · "}
           Cancelados:{" "}
           <span className="font-bold text-red-300">{cancelledCount}</span>
         </p>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
+        <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
+          <Filter size={17} />
+          Filtros del calendario
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+          >
+            <option value="ALL">Todos los estados</option>
+            <option value="CONFIRMED">Confirmados</option>
+            <option value="CANCELLED">Cancelados</option>
+            <option value="COMPLETED">Completados</option>
+            <option value="NO_SHOW">No asistió</option>
+            <option value="PENDING">Pendientes</option>
+          </select>
+
+          <select
+            value={barberFilter}
+            onChange={(event) => setBarberFilter(event.target.value)}
+            className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
+          >
+            <option value="ALL">Todos los barberos</option>
+
+            {barberOptions.map((barber) => (
+              <option key={barber.id} value={barber.id}>
+                {barber.displayName}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setHideCancelled((current) => !current)}
+            className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+              hideCancelled
+                ? "border-red-500/40 bg-red-500/10 text-red-300"
+                : "border-white/10 bg-black text-zinc-300 hover:bg-white/10"
+            }`}
+          >
+            {hideCancelled ? "Mostrando sin cancelados" : "Ocultar cancelados"}
+          </button>
+        </div>
+
+        <button
+          onClick={clearFilters}
+          className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 md:w-auto"
+        >
+          Limpiar filtros
+        </button>
       </div>
 
       {message && (
@@ -366,7 +475,7 @@ export function AdminCalendar() {
 
       <div className="grid gap-4 xl:grid-cols-7">
         {weekDays.map((day) => {
-          const dayAppointments = weekAppointments.filter(
+          const dayAppointments = filteredWeekAppointments.filter(
             (appointment) => getArgentinaDate(appointment.startAt) === day.date
           );
 
@@ -406,12 +515,12 @@ export function AdminCalendar() {
                       className="rounded-2xl border border-white/10 bg-black p-3"
                     >
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-lg font-black text-white">
+                        <p className="whitespace-nowrap text-xl font-black leading-none text-white">
                           {formatTime(appointment.startAt)}
                         </p>
 
                         <span
-                          className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusClass(
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${getStatusClass(
                             appointment.status
                           )}`}
                         >
@@ -426,10 +535,12 @@ export function AdminCalendar() {
                       <div className="mt-2 grid gap-1 text-xs text-zinc-400">
                         <p className="flex items-center gap-1.5">
                           <UserRound size={13} />
-                          {getClientName(appointment)}
+                          <span className="truncate">
+                            {getClientName(appointment)}
+                          </span>
                         </p>
 
-                        <p>
+                        <p className="truncate">
                           Barbero:{" "}
                           <span className="text-zinc-200">
                             {appointment.barber?.displayName || "Sin asignar"}
@@ -438,7 +549,7 @@ export function AdminCalendar() {
                       </div>
 
                       {appointment.notes && (
-                        <p className="mt-3 rounded-xl bg-white/[0.04] p-2 text-xs text-zinc-400">
+                        <p className="mt-3 line-clamp-2 rounded-xl bg-white/[0.04] p-2 text-xs text-zinc-400">
                           {appointment.notes}
                         </p>
                       )}
