@@ -1,0 +1,455 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  RefreshCcw,
+  UserRound,
+} from "lucide-react";
+import { API_URL } from "../config/api";
+
+type Appointment = {
+  id: string;
+  startAt: string;
+  status: string;
+  notes?: string;
+  client?: {
+    fullName?: string;
+    name?: string;
+    email?: string;
+  };
+  user?: {
+    fullName?: string;
+    name?: string;
+    email?: string;
+  };
+  barber?: {
+    id?: string;
+    displayName?: string;
+  };
+  service?: {
+    id?: string;
+    name?: string;
+    price?: string | number;
+  };
+};
+
+type WeekDay = {
+  date: string;
+  label: string;
+  shortLabel: string;
+};
+
+export function AdminCalendar() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [weekStart, setWeekStart] = useState(getCurrentWeekStart());
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  async function loadAppointments() {
+    const token = localStorage.getItem("barberflow_admin_token");
+
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const response = await fetch(`${API_URL}/v1/appointments`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudieron cargar los turnos.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setAppointments(Array.isArray(data) ? data : []);
+
+      if (Array.isArray(data) && data.length === 0) {
+        setMessage("Todavía no hay turnos cargados.");
+      }
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getCurrentWeekStart() {
+    const today = new Date();
+    const argentinaDate = today.toLocaleDateString("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+
+    return getWeekStartFromDate(argentinaDate);
+  }
+
+  function getWeekStartFromDate(dateString: string) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    const dayOfWeek = date.getUTCDay();
+    const mondayDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    date.setUTCDate(date.getUTCDate() + mondayDiff);
+
+    return date.toISOString().slice(0, 10);
+  }
+
+  function addDays(dateString: string, days: number) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    date.setUTCDate(date.getUTCDate() + days);
+
+    return date.toISOString().slice(0, 10);
+  }
+
+  function moveWeek(days: number) {
+    setWeekStart((current) => addDays(current, days));
+  }
+
+  function goToCurrentWeek() {
+    setWeekStart(getCurrentWeekStart());
+  }
+
+  function getArgentinaDate(date: string) {
+    return new Date(date).toLocaleDateString("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires",
+    });
+  }
+
+  function formatTime(date: string) {
+    return new Intl.DateTimeFormat("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Argentina/Buenos_Aires",
+    }).format(new Date(date));
+  }
+
+  function formatDayLabel(dateString: string) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return new Intl.DateTimeFormat("es-AR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "short",
+      timeZone: "UTC",
+    }).format(date);
+  }
+
+  function formatShortDayLabel(dateString: string) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return new Intl.DateTimeFormat("es-AR", {
+      weekday: "short",
+      timeZone: "UTC",
+    }).format(date);
+  }
+
+  function formatWeekRange() {
+    const end = addDays(weekStart, 6);
+
+    const startText = new Intl.DateTimeFormat("es-AR", {
+      day: "2-digit",
+      month: "short",
+      timeZone: "UTC",
+    }).format(new Date(`${weekStart}T00:00:00Z`));
+
+    const endText = new Intl.DateTimeFormat("es-AR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${end}T00:00:00Z`));
+
+    return `${startText} al ${endText}`;
+  }
+
+  function getStatusLabel(status: string) {
+    if (status === "CONFIRMED") return "Confirmado";
+    if (status === "CANCELLED") return "Cancelado";
+    if (status === "PENDING") return "Pendiente";
+    if (status === "COMPLETED") return "Completado";
+    if (status === "NO_SHOW") return "No asistió";
+
+    return status;
+  }
+
+  function getStatusClass(status: string) {
+    if (status === "CONFIRMED") {
+      return "border-green-500/30 bg-green-500/10 text-green-300";
+    }
+
+    if (status === "CANCELLED") {
+      return "border-red-500/30 bg-red-500/10 text-red-300";
+    }
+
+    if (status === "COMPLETED") {
+      return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+    }
+
+    if (status === "NO_SHOW") {
+      return "border-orange-500/30 bg-orange-500/10 text-orange-300";
+    }
+
+    return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
+  }
+
+  function getClientName(appointment: Appointment) {
+    return (
+      appointment.client?.fullName ||
+      appointment.client?.name ||
+      appointment.user?.fullName ||
+      appointment.user?.name ||
+      "Sin nombre"
+    );
+  }
+
+  const weekDays = useMemo<WeekDay[]>(() => {
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = addDays(weekStart, index);
+
+      return {
+        date,
+        label: formatDayLabel(date),
+        shortLabel: formatShortDayLabel(date),
+      };
+    });
+  }, [weekStart]);
+
+  const weekAppointments = useMemo(() => {
+    const start = weekStart;
+    const end = addDays(weekStart, 6);
+
+    return appointments
+      .filter((appointment) => {
+        const appointmentDate = getArgentinaDate(appointment.startAt);
+        return appointmentDate >= start && appointmentDate <= end;
+      })
+      .sort(
+        (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+      );
+  }, [appointments, weekStart]);
+
+  const confirmedCount = weekAppointments.filter(
+    (appointment) => appointment.status === "CONFIRMED"
+  ).length;
+
+  const completedCount = weekAppointments.filter(
+    (appointment) => appointment.status === "COMPLETED"
+  ).length;
+
+  const cancelledCount = weekAppointments.filter(
+    (appointment) => appointment.status === "CANCELLED"
+  ).length;
+
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 md:p-6">
+      <div className="mb-5 flex flex-col gap-4 md:mb-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white md:h-12 md:w-12">
+            <CalendarDays size={21} />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300 md:text-sm">
+              Calendario
+            </p>
+
+            <h3 className="text-xl font-black text-white md:text-2xl">
+              Vista semanal de turnos
+            </h3>
+          </div>
+        </div>
+
+        <button
+          onClick={loadAppointments}
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60 md:w-auto"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" size={17} />
+              Cargando...
+            </>
+          ) : (
+            <>
+              <RefreshCcw size={17} />
+              Actualizar
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4 md:col-span-2">
+          <p className="text-xs text-zinc-500">Semana seleccionada</p>
+          <p className="mt-1 text-xl font-black text-white">
+            {formatWeekRange()}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
+          <p className="text-xs text-green-300">Confirmados</p>
+          <p className="mt-1 text-2xl font-black text-white">
+            {confirmedCount}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+          <p className="text-xs text-blue-300">Completados</p>
+          <p className="mt-1 text-2xl font-black text-white">
+            {completedCount}
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button
+            onClick={() => moveWeek(-7)}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            <ChevronLeft size={17} />
+            Semana anterior
+          </button>
+
+          <button
+            onClick={goToCurrentWeek}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+          >
+            Esta semana
+          </button>
+
+          <button
+            onClick={() => moveWeek(7)}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            Semana siguiente
+            <ChevronRight size={17} />
+          </button>
+        </div>
+
+        <p className="mt-4 text-sm text-zinc-400">
+          Total de turnos en esta semana:{" "}
+          <span className="font-bold text-white">{weekAppointments.length}</span>
+          {" · "}
+          Cancelados:{" "}
+          <span className="font-bold text-red-300">{cancelledCount}</span>
+        </p>
+      </div>
+
+      {message && (
+        <div className="mb-5 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-center text-sm text-yellow-200">
+          {message}
+        </div>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-7">
+        {weekDays.map((day) => {
+          const dayAppointments = weekAppointments.filter(
+            (appointment) => getArgentinaDate(appointment.startAt) === day.date
+          );
+
+          return (
+            <div
+              key={day.date}
+              className="rounded-3xl border border-white/10 bg-zinc-950 p-4"
+            >
+              <div className="mb-4 border-b border-white/10 pb-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
+                  {day.shortLabel}
+                </p>
+
+                <h4 className="mt-1 text-lg font-black capitalize text-white">
+                  {day.label}
+                </h4>
+
+                <p className="mt-1 text-xs text-zinc-500">{day.date}</p>
+              </div>
+
+              {dayAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-black p-4 text-center">
+                  <CalendarDays
+                    className="mx-auto mb-2 text-zinc-600"
+                    size={24}
+                  />
+
+                  <p className="text-sm font-semibold text-zinc-400">
+                    Sin turnos
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {dayAppointments.map((appointment) => (
+                    <article
+                      key={appointment.id}
+                      className="rounded-2xl border border-white/10 bg-black p-3"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-lg font-black text-white">
+                          {formatTime(appointment.startAt)}
+                        </p>
+
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStatusClass(
+                            appointment.status
+                          )}`}
+                        >
+                          {getStatusLabel(appointment.status)}
+                        </span>
+                      </div>
+
+                      <p className="text-sm font-bold text-white">
+                        {appointment.service?.name || "Servicio"}
+                      </p>
+
+                      <div className="mt-2 grid gap-1 text-xs text-zinc-400">
+                        <p className="flex items-center gap-1.5">
+                          <UserRound size={13} />
+                          {getClientName(appointment)}
+                        </p>
+
+                        <p>
+                          Barbero:{" "}
+                          <span className="text-zinc-200">
+                            {appointment.barber?.displayName || "Sin asignar"}
+                          </span>
+                        </p>
+                      </div>
+
+                      {appointment.notes && (
+                        <p className="mt-3 rounded-xl bg-white/[0.04] p-2 text-xs text-zinc-400">
+                          {appointment.notes}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

@@ -15,6 +15,7 @@ import { API_URL } from "../config/api";
 import { AdminAppointments } from "./AdminAppointments";
 import { AdminAssignServices } from "./AdminAssignServices";
 import { AdminBarbers } from "./AdminBarbers";
+import { AdminCalendar } from "./AdminCalendar";
 import { AdminClients } from "./AdminClients";
 import { AdminDashboard } from "./AdminDashboard";
 import { AdminScheduleBlocks } from "./AdminScheduleBlocks";
@@ -26,6 +27,7 @@ type AdminTab =
   | "barbers"
   | "assign"
   | "appointments"
+  | "calendar"
   | "workingHours"
   | "scheduleBlocks"
   | "clients";
@@ -49,6 +51,11 @@ const tabs = [
   {
     id: "appointments",
     label: "Turnos",
+    icon: CalendarDays,
+  },
+  {
+    id: "calendar",
+    label: "Calendario",
     icon: CalendarDays,
   },
   {
@@ -141,6 +148,7 @@ export function AdminPanel() {
     if (activeTab === "barbers") return <AdminBarbers />;
     if (activeTab === "assign") return <AdminAssignServices />;
     if (activeTab === "appointments") return <AdminAppointments />;
+    if (activeTab === "calendar") return <AdminCalendar />;
     if (activeTab === "workingHours") return <AdminWorkingHours />;
     if (activeTab === "scheduleBlocks") return <AdminScheduleBlocks />;
 
@@ -167,7 +175,7 @@ export function AdminPanel() {
 
           <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400">
             Iniciá sesión como administrador para gestionar servicios, barberos,
-            asignaciones, turnos, horarios, bloqueos y clientes.
+            asignaciones, turnos, calendario, horarios, bloqueos y clientes.
           </p>
         </div>
 
@@ -231,8 +239,8 @@ export function AdminPanel() {
           </h2>
 
           <p className="mt-2 max-w-2xl text-sm text-zinc-400 md:mt-3">
-            Gestioná servicios, barberos, asignaciones, turnos, horarios,
-            bloqueos y clientes desde un solo lugar.
+            Gestioná servicios, barberos, asignaciones, turnos, calendario,
+            horarios, bloqueos y clientes desde un solo lugar.
           </p>
         </div>
 
@@ -248,7 +256,7 @@ export function AdminPanel() {
       <AdminDashboard />
 
       <div className="mb-4 rounded-3xl border border-white/10 bg-zinc-950 p-2">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
