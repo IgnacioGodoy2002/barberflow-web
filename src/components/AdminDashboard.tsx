@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { API_URL } from "../config/api";
 
+type DashboardPeriod = "TODAY" | "WEEK" | "MONTH" | "TOTAL";
+
 type Appointment = {
   id: string;
   startAt: string;
@@ -63,6 +65,7 @@ export function AdminDashboard() {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
 
+  const [period, setPeriod] = useState<DashboardPeriod>("TODAY");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -170,6 +173,27 @@ export function AdminDashboard() {
     }).format(value);
   }
 
+  function addDaysToDateString(dateString: string, days: number) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    date.setUTCDate(date.getUTCDate() + days);
+
+    return date.toISOString().slice(0, 10);
+  }
+
+  function getWeekRange(dateString: string) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    const dayOfWeek = date.getUTCDay();
+    const mondayDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    const start = addDaysToDateString(dateString, mondayDiff);
+    const end = addDaysToDateString(start, 6);
+
+    return { start, end };
+  }
+
   function getAppointmentPrice(appointment: Appointment) {
     const price = Number(appointment.service?.price || 0);
 
@@ -206,34 +230,81 @@ export function AdminDashboard() {
     return appointment.client?.email || appointment.user?.email || "Sin email";
   }
 
+  function getPeriodLabel(selectedPeriod: DashboardPeriod) {
+    if (selectedPeriod === "TODAY") return "Hoy";
+    if (selectedPeriod === "WEEK") return "Esta semana";
+    if (selectedPeriod === "MONTH") return "Este mes";
+    return "Total";
+  }
+
+  function getPeriodDescription(selectedPeriod: DashboardPeriod) {
+    if (selectedPeriod === "TODAY") {
+      return "Mostrando métricas solo del día actual.";
+    }
+
+    if (selectedPeriod === "WEEK") {
+      return "Mostrando métricas desde el lunes hasta el domingo de esta semana.";
+    }
+
+    if (selectedPeriod === "MONTH") {
+      return "Mostrando métricas del mes actual.";
+    }
+
+    return "Mostrando métricas históricas de todos los turnos.";
+  }
+
   const today = new Date().toLocaleDateString("en-CA", {
     timeZone: "America/Argentina/Buenos_Aires",
   });
 
-  const confirmedAppointments = appointments.filter(
+  const periodAppointments = useMemo(() => {
+    if (period === "TOTAL") {
+      return appointments;
+    }
+
+    if (period === "TODAY") {
+      return appointments.filter(
+        (appointment) => getArgentinaDate(appointment.startAt) === today
+      );
+    }
+
+    if (period === "MONTH") {
+      return appointments.filter((appointment) =>
+        getArgentinaDate(appointment.startAt).startsWith(today.slice(0, 7))
+      );
+    }
+
+    const weekRange = getWeekRange(today);
+
+    return appointments.filter((appointment) => {
+      const appointmentDate = getArgentinaDate(appointment.startAt);
+
+      return (
+        appointmentDate >= weekRange.start && appointmentDate <= weekRange.end
+      );
+    });
+  }, [appointments, period, today]);
+
+  const confirmedAppointments = periodAppointments.filter(
     (appointment) => appointment.status === "CONFIRMED"
   ).length;
 
-  const cancelledAppointments = appointments.filter(
+  const cancelledAppointments = periodAppointments.filter(
     (appointment) => appointment.status === "CANCELLED"
   ).length;
 
-  const completedAppointments = appointments.filter(
+  const completedAppointments = periodAppointments.filter(
     (appointment) => appointment.status === "COMPLETED"
   ).length;
 
-  const noShowAppointments = appointments.filter(
+  const noShowAppointments = periodAppointments.filter(
     (appointment) => appointment.status === "NO_SHOW"
-  ).length;
-
-  const todayAppointments = appointments.filter(
-    (appointment) => getArgentinaDate(appointment.startAt) === today
   ).length;
 
   const totalClients = useMemo(() => {
     const clients = new Set<string>();
 
-    appointments.forEach((appointment) => {
+    periodAppointments.forEach((appointment) => {
       const clientKey =
         appointment.client?.id ||
         appointment.user?.id ||
@@ -246,40 +317,39 @@ export function AdminDashboard() {
     });
 
     return clients.size;
-  }, [appointments]);
+  }, [periodAppointments]);
 
   const activeBlocks = blocks.filter((block) => block.isActive !== false).length;
 
-  const estimatedTodayIncome = useMemo(() => {
-    return appointments
-      .filter(
-        (appointment) =>
-          getArgentinaDate(appointment.startAt) === today &&
-          isRevenueAppointment(appointment)
-      )
-      .reduce(
-        (total, appointment) => total + getAppointmentPrice(appointment),
-        0
-      );
-  }, [appointments, today]);
-
-  const estimatedTotalIncome = useMemo(() => {
-    return appointments
+  const estimatedPeriodIncome = useMemo(() => {
+    return periodAppointments
       .filter((appointment) => isRevenueAppointment(appointment))
       .reduce(
         (total, appointment) => total + getAppointmentPrice(appointment),
         0
       );
-  }, [appointments]);
+  }, [periodAppointments]);
 
   const completedIncome = useMemo(() => {
-    return appointments
+    return periodAppointments
       .filter((appointment) => appointment.status === "COMPLETED")
       .reduce(
         (total, appointment) => total + getAppointmentPrice(appointment),
         0
       );
-  }, [appointments]);
+  }, [periodAppointments]);
+
+  const averageIncomePerAppointment = useMemo(() => {
+    const revenueAppointments = periodAppointments.filter((appointment) =>
+      isRevenueAppointment(appointment)
+    );
+
+    if (revenueAppointments.length === 0) {
+      return 0;
+    }
+
+    return Math.round(estimatedPeriodIncome / revenueAppointments.length);
+  }, [periodAppointments, estimatedPeriodIncome]);
 
   const serviceRanking = useMemo(() => {
     const map = new Map<
@@ -292,7 +362,7 @@ export function AdminDashboard() {
       }
     >();
 
-    appointments
+    periodAppointments
       .filter((appointment) => isValidRankingAppointment(appointment))
       .forEach((appointment) => {
         const serviceId = appointment.service?.id || "sin-servicio";
@@ -316,7 +386,7 @@ export function AdminDashboard() {
     return Array.from(map.values())
       .sort((a, b) => b.count - a.count || b.income - a.income)
       .slice(0, 5);
-  }, [appointments]);
+  }, [periodAppointments]);
 
   const clientRanking = useMemo(() => {
     const map = new Map<
@@ -330,7 +400,7 @@ export function AdminDashboard() {
       }
     >();
 
-    appointments
+    periodAppointments
       .filter((appointment) => isValidRankingAppointment(appointment))
       .forEach((appointment) => {
         const clientId =
@@ -360,7 +430,7 @@ export function AdminDashboard() {
     return Array.from(map.values())
       .sort((a, b) => b.count - a.count || b.income - a.income)
       .slice(0, 5);
-  }, [appointments]);
+  }, [periodAppointments]);
 
   const todayUpcomingAppointments = useMemo(() => {
     return appointments
@@ -379,7 +449,7 @@ export function AdminDashboard() {
   const cards = [
     {
       title: "Turnos",
-      value: appointments.length,
+      value: periodAppointments.length,
       icon: CalendarDays,
       className: "border-purple-500/30 bg-purple-500/10 text-purple-300",
     },
@@ -396,16 +466,16 @@ export function AdminDashboard() {
       className: "border-red-500/30 bg-red-500/10 text-red-300",
     },
     {
-      title: "Hoy",
-      value: todayAppointments,
+      title: "Completados",
+      value: completedAppointments,
       icon: CalendarClock,
-      className: "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
+      className: "border-blue-500/30 bg-blue-500/10 text-blue-300",
     },
     {
       title: "Servicios",
       value: services.length,
       icon: Scissors,
-      className: "border-blue-500/30 bg-blue-500/10 text-blue-300",
+      className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
     },
     {
       title: "Barberos",
@@ -417,7 +487,7 @@ export function AdminDashboard() {
       title: "Clientes",
       value: totalClients,
       icon: Users,
-      className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+      className: "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
     },
     {
       title: "Bloqueos",
@@ -440,7 +510,7 @@ export function AdminDashboard() {
           </h3>
 
           <p className="mt-1 text-xs text-zinc-400 md:mt-2 md:text-sm">
-            Estado actual de turnos, ingresos, servicios, clientes y bloqueos.
+            {getPeriodDescription(period)}
           </p>
         </div>
 
@@ -463,26 +533,59 @@ export function AdminDashboard() {
         </button>
       </div>
 
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black p-2 md:grid-cols-4">
+        {(["TODAY", "WEEK", "MONTH", "TOTAL"] as DashboardPeriod[]).map(
+          (item) => (
+            <button
+              key={item}
+              onClick={() => setPeriod(item)}
+              className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
+                period === item
+                  ? "bg-purple-600 text-white"
+                  : "text-zinc-400 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {getPeriodLabel(item)}
+            </button>
+          )
+        )}
+      </div>
+
       {message && (
         <div className="mb-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-center text-sm text-yellow-200">
           {message}
         </div>
       )}
 
+      <div className="mb-4 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">
+          Período seleccionado
+        </p>
+
+        <p className="mt-2 text-2xl font-black text-white">
+          {getPeriodLabel(period)}
+        </p>
+
+        <p className="mt-1 text-sm text-purple-100">
+          Los ingresos, rankings, clientes y turnos se calculan sobre este
+          período.
+        </p>
+      </div>
+
       <div className="mb-4 grid gap-3 md:grid-cols-3">
         <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-300">
-                Ingresos hoy
+                Ingresos período
               </p>
 
               <p className="mt-2 text-2xl font-black text-white md:text-3xl">
-                {formatCurrency(estimatedTodayIncome)}
+                {formatCurrency(estimatedPeriodIncome)}
               </p>
 
               <p className="mt-1 text-xs text-green-100">
-                Confirmados y completados de hoy.
+                Confirmados y completados.
               </p>
             </div>
 
@@ -496,15 +599,15 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
-                Ingresos estimados
+                Ingresos atendidos
               </p>
 
               <p className="mt-2 text-2xl font-black text-white md:text-3xl">
-                {formatCurrency(estimatedTotalIncome)}
+                {formatCurrency(completedIncome)}
               </p>
 
               <p className="mt-1 text-xs text-blue-100">
-                Total confirmados y completados.
+                Solo turnos completados.
               </p>
             </div>
 
@@ -514,23 +617,23 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">
-                Ingresos atendidos
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">
+                Ticket promedio
               </p>
 
               <p className="mt-2 text-2xl font-black text-white md:text-3xl">
-                {formatCurrency(completedIncome)}
+                {formatCurrency(averageIncomePerAppointment)}
               </p>
 
-              <p className="mt-1 text-xs text-purple-100">
-                Solo turnos completados.
+              <p className="mt-1 text-xs text-yellow-100">
+                Promedio por turno activo.
               </p>
             </div>
 
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/10 text-purple-300">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-300">
               <DollarSign size={22} />
             </div>
           </div>
@@ -623,7 +726,8 @@ export function AdminDashboard() {
               <p className="font-bold text-white">Sin datos suficientes</p>
 
               <p className="mt-2 text-sm text-zinc-400">
-                Cuando haya turnos activos, se va a armar el ranking.
+                Cuando haya turnos activos en este período, se va a armar el
+                ranking.
               </p>
             </div>
           ) : (
@@ -686,7 +790,8 @@ export function AdminDashboard() {
               <p className="font-bold text-white">Sin clientes frecuentes</p>
 
               <p className="mt-2 text-sm text-zinc-400">
-                Cuando los clientes reserven turnos, van a aparecer acá.
+                Cuando los clientes reserven turnos en este período, van a
+                aparecer acá.
               </p>
             </div>
           ) : (
