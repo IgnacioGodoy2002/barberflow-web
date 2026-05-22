@@ -6,6 +6,7 @@ import {
   Edit3,
   Filter,
   Loader2,
+  MessageCircle,
   RefreshCcw,
   Save,
   Search,
@@ -429,7 +430,11 @@ export function AdminAppointments() {
   }
 
   function getClientPhone(appointment: Appointment) {
-    return appointment.client?.phone || appointment.user?.phone || "Sin teléfono";
+    return appointment.client?.phone || appointment.user?.phone || "";
+  }
+
+  function getClientPhoneLabel(appointment: Appointment) {
+    return getClientPhone(appointment) || "Sin teléfono";
   }
 
   function getPrice(appointment: Appointment) {
@@ -438,6 +443,56 @@ export function AdminAppointments() {
     if (Number.isNaN(price)) return 0;
 
     return price;
+  }
+
+  function normalizePhoneForWhatsApp(phone: string) {
+    let digits = phone.replace(/\D/g, "");
+
+    if (!digits) return "";
+
+    if (digits.startsWith("549")) {
+      return digits;
+    }
+
+    if (digits.startsWith("54")) {
+      return `549${digits.slice(2)}`;
+    }
+
+    if (digits.startsWith("0")) {
+      digits = digits.slice(1);
+    }
+
+    if (digits.startsWith("15")) {
+      digits = digits.slice(2);
+    }
+
+    return `549${digits}`;
+  }
+
+  function sendWhatsAppToClient(appointment: Appointment) {
+    const rawPhone = getClientPhone(appointment);
+    const whatsappPhone = normalizePhoneForWhatsApp(rawPhone);
+
+    if (!whatsappPhone) {
+      setMessage("Este cliente no tiene teléfono cargado.");
+      return;
+    }
+
+    const message = `Hola ${getClientName(
+      appointment
+    )}, te escribimos de Nacho Barbershop por tu turno:
+
+Servicio: ${appointment.service?.name || "Servicio"}
+Barbero: ${appointment.barber?.displayName || "Barbero"}
+Fecha: ${formatDate(appointment.startAt)}
+Estado: ${getStatusLabel(appointment.status)}
+
+Cualquier consulta nos avisás.`;
+
+    window.open(
+      `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
   }
 
   function escapeCsvValue(value: string | number) {
@@ -471,7 +526,7 @@ export function AdminAppointments() {
       getStatusLabel(appointment.status),
       getClientName(appointment),
       getClientEmail(appointment),
-      getClientPhone(appointment),
+      getClientPhoneLabel(appointment),
       appointment.service?.name || "Sin servicio",
       appointment.barber?.displayName || "Sin barbero",
       getPrice(appointment),
@@ -481,7 +536,7 @@ export function AdminAppointments() {
 
     const csvContent = [
       headers.map(escapeCsvValue).join(";"),
-...rows.map((row) => row.map(escapeCsvValue).join(";")),
+      ...rows.map((row) => row.map(escapeCsvValue).join(";")),
     ].join("\n");
 
     const blob = new Blob([`\uFEFF${csvContent}`], {
@@ -531,6 +586,7 @@ export function AdminAppointments() {
 
       const clientName = getClientName(appointment).toLowerCase();
       const clientEmail = getClientEmail(appointment).toLowerCase();
+      const clientPhone = getClientPhoneLabel(appointment).toLowerCase();
       const serviceName = appointment.service?.name?.toLowerCase() || "";
       const barberName = appointment.barber?.displayName?.toLowerCase() || "";
 
@@ -538,6 +594,7 @@ export function AdminAppointments() {
         !search ||
         clientName.includes(search) ||
         clientEmail.includes(search) ||
+        clientPhone.includes(search) ||
         serviceName.includes(search) ||
         barberName.includes(search);
 
@@ -692,7 +749,7 @@ export function AdminAppointments() {
             <input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar cliente, email..."
+              placeholder="Buscar cliente, email, teléfono..."
               className="w-full rounded-2xl border border-white/10 bg-black px-11 py-3 text-sm text-white outline-none focus:border-purple-500"
             />
           </div>
@@ -830,7 +887,7 @@ export function AdminAppointments() {
                     <p>
                       Teléfono:{" "}
                       <span className="text-zinc-200">
-                        {getClientPhone(appointment)}
+                        {getClientPhoneLabel(appointment)}
                       </span>
                     </p>
 
@@ -886,6 +943,14 @@ export function AdminAppointments() {
                       Editar
                     </button>
                   )}
+
+                  <button
+                    onClick={() => sendWhatsAppToClient(appointment)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
+                  >
+                    <MessageCircle size={17} />
+                    WhatsApp
+                  </button>
 
                   {appointment.status !== "CANCELLED" &&
                     appointment.status !== "COMPLETED" && (
