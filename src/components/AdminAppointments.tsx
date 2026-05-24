@@ -167,51 +167,77 @@ export function AdminAppointments() {
   }
 
   async function cancelAppointment(appointmentId: string) {
-    const token = localStorage.getItem("barberflow_admin_token");
+  const token = localStorage.getItem("barberflow_admin_token");
 
-    if (!token) {
-      setMessage("Primero iniciá sesión como admin.");
+  if (!token) {
+    setMessage("Primero iniciá sesión como admin.");
+    return;
+  }
+
+  const reason = window.prompt(
+    `Ingresá el motivo de cancelación:
+
+Ejemplos:
+- Cliente avisó que no puede venir
+- Reprogramó para otro día
+- Cancelado por la barbería
+- No respondió`
+  );
+
+  if (reason === null) return;
+
+  const cleanReason = reason.trim();
+
+  if (!cleanReason) {
+    setMessage("Para cancelar el turno tenés que ingresar un motivo.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `¿Seguro que querés cancelar este turno?
+
+Motivo: ${cleanReason}`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setLoadingStatusId(appointmentId);
+    setMessage("");
+
+    const response = await fetch(
+      `${API_URL}/v1/appointments/${appointmentId}/cancel`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reason: cleanReason,
+        }),
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const apiMessage = Array.isArray(data.message)
+        ? data.message.join(", ")
+        : data.message || "No se pudo cancelar el turno.";
+
+      setMessage(apiMessage);
       return;
     }
 
-    const confirmed = window.confirm("¿Seguro que querés cancelar este turno?");
-
-    if (!confirmed) return;
-
-    try {
-      setLoadingAppointments(true);
-      setMessage("");
-
-      const response = await fetch(
-        `${API_URL}/v1/appointments/${appointmentId}/cancel`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        const apiMessage = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message || "No se pudo cancelar el turno.";
-
-        setMessage(apiMessage);
-        return;
-      }
-
-      setMessage("Turno cancelado correctamente.");
-      await loadData();
-    } catch {
-      setMessage("No se pudo conectar con la API.");
-    } finally {
-      setLoadingAppointments(false);
-    }
+    setMessage("Turno cancelado correctamente con motivo guardado.");
+    await loadData();
+  } catch {
+    setMessage("No se pudo conectar con la API.");
+  } finally {
+    setLoadingStatusId(null);
   }
-
+}
   async function updateAppointmentStatus(
     appointmentId: string,
     status: "CONFIRMED" | "COMPLETED" | "NO_SHOW"

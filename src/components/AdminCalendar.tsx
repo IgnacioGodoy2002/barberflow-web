@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Filter,
   Loader2,
+  MessageCircle,
   RefreshCcw,
   UserRound,
+  UserX,
+  XCircle,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 
@@ -15,15 +19,18 @@ type Appointment = {
   startAt: string;
   status: string;
   notes?: string;
+  cancelReason?: string;
   client?: {
     fullName?: string;
     name?: string;
     email?: string;
+    phone?: string;
   };
   user?: {
     fullName?: string;
     name?: string;
     email?: string;
+    phone?: string;
   };
   barber?: {
     id?: string;
@@ -46,6 +53,7 @@ export function AdminCalendar() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [weekStart, setWeekStart] = useState(getCurrentWeekStart());
   const [loading, setLoading] = useState(false);
+  const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -94,6 +102,118 @@ export function AdminCalendar() {
       setMessage("No se pudo conectar con la API.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function updateAppointmentStatus(
+    appointmentId: string,
+    status: "CONFIRMED" | "COMPLETED" | "NO_SHOW"
+  ) {
+    const token = localStorage.getItem("barberflow_admin_token");
+
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
+
+    const statusText =
+      status === "COMPLETED"
+        ? "completado"
+        : status === "NO_SHOW"
+        ? "no asistió"
+        : "confirmado";
+
+    const confirmed = window.confirm(
+      `¿Seguro que querés marcar este turno como ${statusText}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setLoadingActionId(appointmentId);
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/v1/appointments/${appointmentId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo actualizar el estado del turno.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setMessage(`Turno marcado como ${statusText}.`);
+      await loadAppointments();
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingActionId(null);
+    }
+  }
+
+  async function cancelAppointment(appointmentId: string) {
+    const token = localStorage.getItem("barberflow_admin_token");
+
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
+
+    const confirmed = window.confirm("¿Seguro que querés cancelar este turno?");
+
+    if (!confirmed) return;
+
+    try {
+      setLoadingActionId(appointmentId);
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/v1/appointments/${appointmentId}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reason: "Cancelado desde calendario admin",
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo cancelar el turno.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setMessage("Turno cancelado correctamente.");
+      await loadAppointments();
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingActionId(null);
     }
   }
 
@@ -151,6 +271,14 @@ export function AdminCalendar() {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
+      timeZone: "America/Argentina/Buenos_Aires",
+    }).format(new Date(date));
+  }
+
+  function formatFullDate(date: string) {
+    return new Intl.DateTimeFormat("es-AR", {
+      dateStyle: "medium",
+      timeStyle: "short",
       timeZone: "America/Argentina/Buenos_Aires",
     }).format(new Date(date));
   }
@@ -233,6 +361,56 @@ export function AdminCalendar() {
       appointment.user?.fullName ||
       appointment.user?.name ||
       "Sin nombre"
+    );
+  }
+
+  function getClientPhone(appointment: Appointment) {
+    return appointment.client?.phone || appointment.user?.phone || "";
+  }
+
+  function normalizePhoneForWhatsApp(phone: string) {
+    let digits = phone.replace(/\D/g, "");
+
+    if (!digits) return "";
+
+    if (digits.startsWith("549")) return digits;
+
+    if (digits.startsWith("54")) return `549${digits.slice(2)}`;
+
+    if (digits.startsWith("0")) {
+      digits = digits.slice(1);
+    }
+
+    if (digits.startsWith("15")) {
+      digits = digits.slice(2);
+    }
+
+    return `549${digits}`;
+  }
+
+  function sendWhatsAppToClient(appointment: Appointment) {
+    const rawPhone = getClientPhone(appointment);
+    const whatsappPhone = normalizePhoneForWhatsApp(rawPhone);
+
+    if (!whatsappPhone) {
+      setMessage("Este cliente no tiene teléfono cargado.");
+      return;
+    }
+
+    const message = `Hola ${getClientName(
+      appointment
+    )}, te escribimos de Nacho Barbershop por tu turno:
+
+Servicio: ${appointment.service?.name || "Servicio"}
+Barbero: ${appointment.barber?.displayName || "Barbero"}
+Fecha: ${formatFullDate(appointment.startAt)}
+Estado: ${getStatusLabel(appointment.status)}
+
+Cualquier consulta nos avisás.`;
+
+    window.open(
+      `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`,
+      "_blank"
     );
   }
 
@@ -553,6 +731,99 @@ export function AdminCalendar() {
                           {appointment.notes}
                         </p>
                       )}
+
+                      <div className="mt-3 grid gap-2">
+                        <button
+                          onClick={() => sendWhatsAppToClient(appointment)}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-green-500/40 px-3 py-2 text-xs font-semibold text-green-300 transition hover:bg-green-500/10"
+                        >
+                          <MessageCircle size={14} />
+                          WhatsApp
+                        </button>
+
+                        {appointment.status !== "CANCELLED" &&
+                          appointment.status !== "COMPLETED" && (
+                            <button
+                              onClick={() =>
+                                updateAppointmentStatus(
+                                  appointment.id,
+                                  "COMPLETED"
+                                )
+                              }
+                              disabled={loadingActionId === appointment.id}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-blue-500/40 px-3 py-2 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
+                            >
+                              {loadingActionId === appointment.id ? (
+                                <Loader2
+                                  className="animate-spin"
+                                  size={14}
+                                />
+                              ) : (
+                                <CheckCircle2 size={14} />
+                              )}
+                              Completado
+                            </button>
+                          )}
+
+                        {appointment.status !== "CANCELLED" &&
+                          appointment.status !== "NO_SHOW" && (
+                            <button
+                              onClick={() =>
+                                updateAppointmentStatus(
+                                  appointment.id,
+                                  "NO_SHOW"
+                                )
+                              }
+                              disabled={loadingActionId === appointment.id}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-orange-500/40 px-3 py-2 text-xs font-semibold text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-60"
+                            >
+                              {loadingActionId === appointment.id ? (
+                                <Loader2
+                                  className="animate-spin"
+                                  size={14}
+                                />
+                              ) : (
+                                <UserX size={14} />
+                              )}
+                              No asistió
+                            </button>
+                          )}
+
+                        {appointment.status !== "CANCELLED" &&
+                          appointment.status !== "CONFIRMED" && (
+                            <button
+                              onClick={() =>
+                                updateAppointmentStatus(
+                                  appointment.id,
+                                  "CONFIRMED"
+                                )
+                              }
+                              disabled={loadingActionId === appointment.id}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-500/40 px-3 py-2 text-xs font-semibold text-yellow-300 transition hover:bg-yellow-500/10 disabled:opacity-60"
+                            >
+                              {loadingActionId === appointment.id ? (
+                                <Loader2
+                                  className="animate-spin"
+                                  size={14}
+                                />
+                              ) : (
+                                <RefreshCcw size={14} />
+                              )}
+                              Reconfirmar
+                            </button>
+                          )}
+
+                        {appointment.status !== "CANCELLED" && (
+                          <button
+                            onClick={() => cancelAppointment(appointment.id)}
+                            disabled={loadingActionId === appointment.id}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+                          >
+                            <XCircle size={14} />
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>
