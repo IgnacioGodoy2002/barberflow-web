@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Filter,
   Loader2,
   MessageCircle,
@@ -54,6 +56,9 @@ export function AdminCalendar() {
   const [weekStart, setWeekStart] = useState(getCurrentWeekStart());
   const [loading, setLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
+  const [expandedActionsId, setExpandedActionsId] = useState<string | null>(
+    null
+  );
   const [message, setMessage] = useState("");
 
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -159,6 +164,7 @@ export function AdminCalendar() {
       }
 
       setMessage(`Turno marcado como ${statusText}.`);
+      setExpandedActionsId(null);
       await loadAppointments();
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -168,77 +174,78 @@ export function AdminCalendar() {
   }
 
   async function cancelAppointment(appointmentId: string) {
-  const token = localStorage.getItem("barberflow_admin_token");
+    const token = localStorage.getItem("barberflow_admin_token");
 
-  if (!token) {
-    setMessage("Primero iniciá sesión como admin.");
-    return;
-  }
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
 
-  const reason = window.prompt(
-    `Ingresá el motivo de cancelación:
+    const reason = window.prompt(
+      `Ingresá el motivo de cancelación:
 
 Ejemplos:
 - Cliente avisó que no puede venir
 - Reprogramó para otro día
 - Cancelado por la barbería
 - No respondió`
-  );
-
-  if (reason === null) return;
-
-  const cleanReason = reason.trim();
-
-  if (!cleanReason) {
-    setMessage("Para cancelar el turno tenés que ingresar un motivo.");
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `¿Seguro que querés cancelar este turno?
-
-Motivo: ${cleanReason}`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    setLoadingActionId(appointmentId);
-    setMessage("");
-
-    const response = await fetch(
-      `${API_URL}/v1/appointments/${appointmentId}/cancel`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          reason: cleanReason,
-        }),
-      }
     );
 
-    const data = await response.json().catch(() => ({}));
+    if (reason === null) return;
 
-    if (!response.ok) {
-      const apiMessage = Array.isArray(data.message)
-        ? data.message.join(", ")
-        : data.message || "No se pudo cancelar el turno.";
+    const cleanReason = reason.trim();
 
-      setMessage(apiMessage);
+    if (!cleanReason) {
+      setMessage("Para cancelar el turno tenés que ingresar un motivo.");
       return;
     }
 
-    setMessage("Turno cancelado correctamente con motivo guardado.");
-    await loadAppointments();
-  } catch {
-    setMessage("No se pudo conectar con la API.");
-  } finally {
-    setLoadingActionId(null);
+    const confirmed = window.confirm(
+      `¿Seguro que querés cancelar este turno?
+
+Motivo: ${cleanReason}`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setLoadingActionId(appointmentId);
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/v1/appointments/${appointmentId}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reason: cleanReason,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo cancelar el turno.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setMessage("Turno cancelado correctamente con motivo guardado.");
+      setExpandedActionsId(null);
+      await loadAppointments();
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingActionId(null);
+    }
   }
-}
 
   function getCurrentWeekStart() {
     const today = new Date();
@@ -271,16 +278,25 @@ Motivo: ${cleanReason}`
 
   function moveWeek(days: number) {
     setWeekStart((current) => addDays(current, days));
+    setExpandedActionsId(null);
   }
 
   function goToCurrentWeek() {
     setWeekStart(getCurrentWeekStart());
+    setExpandedActionsId(null);
   }
 
   function clearFilters() {
     setStatusFilter("ALL");
     setBarberFilter("ALL");
     setHideCancelled(false);
+    setExpandedActionsId(null);
+  }
+
+  function toggleActions(appointmentId: string) {
+    setExpandedActionsId((current) =>
+      current === appointmentId ? null : appointmentId
+    );
   }
 
   function getArgentinaDate(date: string) {
@@ -623,7 +639,10 @@ Cualquier consulta nos avisás.`;
         <div className="grid gap-3 md:grid-cols-3">
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setExpandedActionsId(null);
+            }}
             className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="ALL">Todos los estados</option>
@@ -636,7 +655,10 @@ Cualquier consulta nos avisás.`;
 
           <select
             value={barberFilter}
-            onChange={(event) => setBarberFilter(event.target.value)}
+            onChange={(event) => {
+              setBarberFilter(event.target.value);
+              setExpandedActionsId(null);
+            }}
             className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-blue-500"
           >
             <option value="ALL">Todos los barberos</option>
@@ -649,7 +671,10 @@ Cualquier consulta nos avisás.`;
           </select>
 
           <button
-            onClick={() => setHideCancelled((current) => !current)}
+            onClick={() => {
+              setHideCancelled((current) => !current);
+              setExpandedActionsId(null);
+            }}
             className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
               hideCancelled
                 ? "border-red-500/40 bg-red-500/10 text-red-300"
@@ -674,187 +699,251 @@ Cualquier consulta nos avisás.`;
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-7">
-        {weekDays.map((day) => {
-          const dayAppointments = filteredWeekAppointments.filter(
-            (appointment) => getArgentinaDate(appointment.startAt) === day.date
-          );
+      <div className="-mx-4 overflow-x-auto px-4 pb-3 md:-mx-6 md:px-6">
+        <div className="grid min-w-[1540px] grid-cols-7 gap-4">
+          {weekDays.map((day) => {
+            const dayAppointments = filteredWeekAppointments.filter(
+              (appointment) =>
+                getArgentinaDate(appointment.startAt) === day.date
+            );
 
-          return (
-            <div
-              key={day.date}
-              className="rounded-3xl border border-white/10 bg-zinc-950 p-4"
-            >
-              <div className="mb-4 border-b border-white/10 pb-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
-                  {day.shortLabel}
-                </p>
-
-                <h4 className="mt-1 text-lg font-black capitalize text-white">
-                  {day.label}
-                </h4>
-
-                <p className="mt-1 text-xs text-zinc-500">{day.date}</p>
-              </div>
-
-              {dayAppointments.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-black p-4 text-center">
-                  <CalendarDays
-                    className="mx-auto mb-2 text-zinc-600"
-                    size={24}
-                  />
-
-                  <p className="text-sm font-semibold text-zinc-400">
-                    Sin turnos
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {dayAppointments.map((appointment) => (
-                    <article
-                      key={appointment.id}
-                      className="rounded-2xl border border-white/10 bg-black p-3"
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="whitespace-nowrap text-xl font-black leading-none text-white">
-                          {formatTime(appointment.startAt)}
-                        </p>
-
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${getStatusClass(
-                            appointment.status
-                          )}`}
-                        >
-                          {getStatusLabel(appointment.status)}
-                        </span>
-                      </div>
-
-                      <p className="text-sm font-bold text-white">
-                        {appointment.service?.name || "Servicio"}
+            return (
+              <div
+                key={day.date}
+                className="rounded-3xl border border-white/10 bg-zinc-950 p-3"
+              >
+                <div className="mb-3 rounded-2xl border border-white/10 bg-black p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+                        {day.shortLabel}
                       </p>
 
-                      <div className="mt-2 grid gap-1 text-xs text-zinc-400">
-                        <p className="flex items-center gap-1.5">
-                          <UserRound size={13} />
-                          <span className="truncate">
-                            {getClientName(appointment)}
-                          </span>
-                        </p>
+                      <h4 className="mt-1 text-base font-black capitalize leading-tight text-white">
+                        {day.label}
+                      </h4>
 
-                        <p className="truncate">
-                          Barbero:{" "}
-                          <span className="text-zinc-200">
-                            {appointment.barber?.displayName || "Sin asignar"}
-                          </span>
-                        </p>
-                      </div>
+                      <p className="mt-1 text-[11px] text-zinc-500">
+                        {day.date}
+                      </p>
+                    </div>
 
-                      {appointment.notes && (
-                        <p className="mt-3 line-clamp-2 rounded-xl bg-white/[0.04] p-2 text-xs text-zinc-400">
-                          {appointment.notes}
-                        </p>
-                      )}
-
-                      <div className="mt-3 grid gap-2">
-                        <button
-                          onClick={() => sendWhatsAppToClient(appointment)}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-green-500/40 px-3 py-2 text-xs font-semibold text-green-300 transition hover:bg-green-500/10"
-                        >
-                          <MessageCircle size={14} />
-                          WhatsApp
-                        </button>
-
-                        {appointment.status !== "CANCELLED" &&
-                          appointment.status !== "COMPLETED" && (
-                            <button
-                              onClick={() =>
-                                updateAppointmentStatus(
-                                  appointment.id,
-                                  "COMPLETED"
-                                )
-                              }
-                              disabled={loadingActionId === appointment.id}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-blue-500/40 px-3 py-2 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
-                            >
-                              {loadingActionId === appointment.id ? (
-                                <Loader2
-                                  className="animate-spin"
-                                  size={14}
-                                />
-                              ) : (
-                                <CheckCircle2 size={14} />
-                              )}
-                              Completado
-                            </button>
-                          )}
-
-                        {appointment.status !== "CANCELLED" &&
-                          appointment.status !== "NO_SHOW" && (
-                            <button
-                              onClick={() =>
-                                updateAppointmentStatus(
-                                  appointment.id,
-                                  "NO_SHOW"
-                                )
-                              }
-                              disabled={loadingActionId === appointment.id}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-orange-500/40 px-3 py-2 text-xs font-semibold text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-60"
-                            >
-                              {loadingActionId === appointment.id ? (
-                                <Loader2
-                                  className="animate-spin"
-                                  size={14}
-                                />
-                              ) : (
-                                <UserX size={14} />
-                              )}
-                              No asistió
-                            </button>
-                          )}
-
-                        {appointment.status !== "CANCELLED" &&
-                          appointment.status !== "CONFIRMED" && (
-                            <button
-                              onClick={() =>
-                                updateAppointmentStatus(
-                                  appointment.id,
-                                  "CONFIRMED"
-                                )
-                              }
-                              disabled={loadingActionId === appointment.id}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-500/40 px-3 py-2 text-xs font-semibold text-yellow-300 transition hover:bg-yellow-500/10 disabled:opacity-60"
-                            >
-                              {loadingActionId === appointment.id ? (
-                                <Loader2
-                                  className="animate-spin"
-                                  size={14}
-                                />
-                              ) : (
-                                <RefreshCcw size={14} />
-                              )}
-                              Reconfirmar
-                            </button>
-                          )}
-
-                        {appointment.status !== "CANCELLED" && (
-                          <button
-                            onClick={() => cancelAppointment(appointment.id)}
-                            disabled={loadingActionId === appointment.id}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
-                          >
-                            <XCircle size={14} />
-                            Cancelar
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  ))}
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-300">
+                      {dayAppointments.length}
+                    </span>
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
+
+                <div className="max-h-[680px] overflow-y-auto pr-1">
+                  {dayAppointments.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-black p-5 text-center">
+                      <CalendarDays
+                        className="mx-auto mb-2 text-zinc-600"
+                        size={24}
+                      />
+
+                      <p className="text-sm font-semibold text-zinc-400">
+                        Sin turnos
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {dayAppointments.map((appointment) => {
+                        const isExpanded = expandedActionsId === appointment.id;
+
+                        return (
+                          <article
+                            key={appointment.id}
+                            className="rounded-2xl border border-white/10 bg-black p-3"
+                          >
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <p className="whitespace-nowrap text-xl font-black leading-none text-white">
+                                {formatTime(appointment.startAt)}
+                              </p>
+
+                              <span
+                                className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold ${getStatusClass(
+                                  appointment.status
+                                )}`}
+                              >
+                                {getStatusLabel(appointment.status)}
+                              </span>
+                            </div>
+
+                            <p className="truncate text-sm font-black text-white">
+                              {appointment.service?.name || "Servicio"}
+                            </p>
+
+                            <div className="mt-2 grid gap-1 text-xs text-zinc-400">
+                              <p className="flex items-center gap-1.5">
+                                <UserRound size={13} />
+                                <span className="truncate">
+                                  {getClientName(appointment)}
+                                </span>
+                              </p>
+
+                              <p className="truncate">
+                                Barbero:{" "}
+                                <span className="text-zinc-200">
+                                  {appointment.barber?.displayName ||
+                                    "Sin asignar"}
+                                </span>
+                              </p>
+                            </div>
+
+                            {appointment.notes && (
+                              <p className="mt-3 line-clamp-1 rounded-xl bg-white/[0.04] p-2 text-[11px] text-zinc-400">
+                                Nota: {appointment.notes}
+                              </p>
+                            )}
+
+                            {appointment.cancelReason && (
+                              <p className="mt-3 line-clamp-1 rounded-xl border border-red-500/20 bg-red-500/10 p-2 text-[11px] text-red-200">
+                                Motivo: {appointment.cancelReason}
+                              </p>
+                            )}
+
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() =>
+                                  sendWhatsAppToClient(appointment)
+                                }
+                                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-green-500/40 px-3 py-2 text-xs font-semibold text-green-300 transition hover:bg-green-500/10"
+                              >
+                                <MessageCircle size={14} />
+                                WhatsApp
+                              </button>
+
+                              <button
+                                onClick={() => toggleActions(appointment.id)}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUp size={14} />
+                                    Ocultar
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown size={14} />
+                                    Acciones
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {isExpanded && (
+                              <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-zinc-950 p-2">
+                                {appointment.status !== "CANCELLED" &&
+                                  appointment.status !== "COMPLETED" && (
+                                    <button
+                                      onClick={() =>
+                                        updateAppointmentStatus(
+                                          appointment.id,
+                                          "COMPLETED"
+                                        )
+                                      }
+                                      disabled={
+                                        loadingActionId === appointment.id
+                                      }
+                                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-blue-500/40 px-3 py-2 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
+                                    >
+                                      {loadingActionId === appointment.id ? (
+                                        <Loader2
+                                          className="animate-spin"
+                                          size={14}
+                                        />
+                                      ) : (
+                                        <CheckCircle2 size={14} />
+                                      )}
+                                      Completado
+                                    </button>
+                                  )}
+
+                                {appointment.status !== "CANCELLED" &&
+                                  appointment.status !== "NO_SHOW" && (
+                                    <button
+                                      onClick={() =>
+                                        updateAppointmentStatus(
+                                          appointment.id,
+                                          "NO_SHOW"
+                                        )
+                                      }
+                                      disabled={
+                                        loadingActionId === appointment.id
+                                      }
+                                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-orange-500/40 px-3 py-2 text-xs font-semibold text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-60"
+                                    >
+                                      {loadingActionId === appointment.id ? (
+                                        <Loader2
+                                          className="animate-spin"
+                                          size={14}
+                                        />
+                                      ) : (
+                                        <UserX size={14} />
+                                      )}
+                                      No asistió
+                                    </button>
+                                  )}
+
+                                {appointment.status !== "CANCELLED" &&
+                                  appointment.status !== "CONFIRMED" && (
+                                    <button
+                                      onClick={() =>
+                                        updateAppointmentStatus(
+                                          appointment.id,
+                                          "CONFIRMED"
+                                        )
+                                      }
+                                      disabled={
+                                        loadingActionId === appointment.id
+                                      }
+                                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-500/40 px-3 py-2 text-xs font-semibold text-yellow-300 transition hover:bg-yellow-500/10 disabled:opacity-60"
+                                    >
+                                      {loadingActionId === appointment.id ? (
+                                        <Loader2
+                                          className="animate-spin"
+                                          size={14}
+                                        />
+                                      ) : (
+                                        <RefreshCcw size={14} />
+                                      )}
+                                      Reconfirmar
+                                    </button>
+                                  )}
+
+                                {appointment.status !== "CANCELLED" && (
+                                  <button
+                                    onClick={() =>
+                                      cancelAppointment(appointment.id)
+                                    }
+                                    disabled={
+                                      loadingActionId === appointment.id
+                                    }
+                                    className="inline-flex items-center justify-center gap-1.5 rounded-full border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+                                  >
+                                    <XCircle size={14} />
+                                    Cancelar
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      <p className="mt-3 text-center text-xs text-zinc-500">
+        En pantallas chicas o medianas podés deslizar horizontalmente para ver
+        todos los días de la semana.
+      </p>
     </section>
   );
 }
