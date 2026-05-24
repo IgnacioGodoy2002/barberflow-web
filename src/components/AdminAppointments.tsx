@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { API_URL } from "../config/api";
+import { AdminManualAppointment } from "./AdminManualAppointment";
 
 type Service = {
   id: string;
@@ -674,7 +675,7 @@ Cualquier consulta nos avisás.`;
           )}
         </button>
       </div>
-
+<AdminManualAppointment onCreated={loadData} />
       {editingAppointmentId && (
         <div
           ref={editFormRef}
