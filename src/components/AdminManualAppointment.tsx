@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarPlus,
   Loader2,
@@ -13,9 +13,15 @@ type Service = {
   name: string;
 };
 
+type BarberService = {
+  serviceId?: string;
+  service?: Service;
+};
+
 type Barber = {
   id: string;
   displayName: string;
+  services?: BarberService[];
 };
 
 type AdminManualAppointmentProps = {
@@ -27,6 +33,9 @@ export function AdminManualAppointment({
 }: AdminManualAppointmentProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [selectedBarberServiceIds, setSelectedBarberServiceIds] = useState<
+    string[]
+  >([]);
 
   const [clientFullName, setClientFullName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -37,12 +46,23 @@ export function AdminManualAppointment({
   const [notes, setNotes] = useState("");
 
   const [loadingData, setLoadingData] = useState(false);
+  const [loadingBarberServices, setLoadingBarberServices] = useState(false);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     loadOptions();
   }, []);
+
+  useEffect(() => {
+    if (!barberId) {
+      setSelectedBarberServiceIds([]);
+      setServiceId("");
+      return;
+    }
+
+    loadSelectedBarberServices(barberId);
+  }, [barberId]);
 
   async function loadOptions() {
     try {
@@ -76,6 +96,47 @@ export function AdminManualAppointment({
     }
   }
 
+  async function loadSelectedBarberServices(selectedBarberId: string) {
+    try {
+      setLoadingBarberServices(true);
+      setMessage("");
+
+      const response = await fetch(`${API_URL}/v1/barbers/${selectedBarberId}`);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setSelectedBarberServiceIds([]);
+        setServiceId("");
+        setMessage("No se pudieron cargar los servicios de este barbero.");
+        return;
+      }
+
+      const barberServices = Array.isArray(data.services) ? data.services : [];
+
+      const serviceIds = barberServices
+        .map((barberService: BarberService) => {
+          return barberService.serviceId || barberService.service?.id || "";
+        })
+        .filter(Boolean);
+
+      setSelectedBarberServiceIds(serviceIds);
+
+      if (serviceId && !serviceIds.includes(serviceId)) {
+        setServiceId("");
+      }
+
+      if (serviceIds.length === 0) {
+        setMessage("Este barbero todavía no tiene servicios asignados.");
+      }
+    } catch {
+      setSelectedBarberServiceIds([]);
+      setServiceId("");
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingBarberServices(false);
+    }
+  }
+
   function clearForm() {
     setClientFullName("");
     setClientEmail("");
@@ -84,6 +145,7 @@ export function AdminManualAppointment({
     setServiceId("");
     setStartAt("");
     setNotes("");
+    setSelectedBarberServiceIds([]);
   }
 
   async function createManualAppointment() {
@@ -161,6 +223,20 @@ export function AdminManualAppointment({
     }
   }
 
+  const availableServices = useMemo(() => {
+    if (!barberId) {
+      return [];
+    }
+
+    if (selectedBarberServiceIds.length === 0) {
+      return [];
+    }
+
+    return services.filter((service) =>
+      selectedBarberServiceIds.includes(service.id)
+    );
+  }, [services, barberId, selectedBarberServiceIds]);
+
   return (
     <div className="mb-5 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -174,9 +250,7 @@ export function AdminManualAppointment({
               Reserva manual
             </p>
 
-            <h4 className="font-black text-white">
-              Crear turno desde admin
-            </h4>
+            <h4 className="font-black text-white">Crear turno desde admin</h4>
           </div>
         </div>
 
@@ -238,7 +312,10 @@ export function AdminManualAppointment({
 
         <select
           value={barberId}
-          onChange={(event) => setBarberId(event.target.value)}
+          onChange={(event) => {
+            setBarberId(event.target.value);
+            setServiceId("");
+          }}
           className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
         >
           <option value="">Seleccionar barbero</option>
@@ -253,11 +330,24 @@ export function AdminManualAppointment({
         <select
           value={serviceId}
           onChange={(event) => setServiceId(event.target.value)}
-          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
+          disabled={!barberId || loadingBarberServices}
+          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <option value="">Seleccionar servicio</option>
+          {!barberId && <option value="">Primero seleccioná un barbero</option>}
 
-          {services.map((service) => (
+          {barberId && loadingBarberServices && (
+            <option value="">Cargando servicios...</option>
+          )}
+
+          {barberId && !loadingBarberServices && availableServices.length === 0 && (
+            <option value="">Sin servicios asignados</option>
+          )}
+
+          {barberId && !loadingBarberServices && availableServices.length > 0 && (
+            <option value="">Seleccionar servicio</option>
+          )}
+
+          {availableServices.map((service) => (
             <option key={service.id} value={service.id}>
               {service.name}
             </option>
@@ -271,6 +361,12 @@ export function AdminManualAppointment({
           className="min-h-24 rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500 md:col-span-2"
         />
       </div>
+
+      {barberId && !loadingBarberServices && availableServices.length > 0 && (
+        <p className="mt-3 rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+          Mostrando solo los servicios asignados al barbero seleccionado.
+        </p>
+      )}
 
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         {message && (
