@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarPlus,
+  ClipboardCopy,
   Loader2,
+  MessageCircle,
   RefreshCcw,
   Save,
   UserRound,
@@ -24,6 +26,25 @@ type Barber = {
   services?: BarberService[];
 };
 
+type CreatedAppointment = {
+  id: string;
+  startAt: string;
+  status: string;
+  notes?: string;
+  client?: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+  };
+  barber?: {
+    displayName?: string;
+  };
+  service?: {
+    name?: string;
+    price?: string | number;
+  };
+};
+
 type AdminManualAppointmentProps = {
   onCreated?: () => void;
 };
@@ -44,6 +65,9 @@ export function AdminManualAppointment({
   const [serviceId, setServiceId] = useState("");
   const [startAt, setStartAt] = useState("");
   const [notes, setNotes] = useState("");
+
+  const [createdAppointment, setCreatedAppointment] =
+    useState<CreatedAppointment | null>(null);
 
   const [loadingData, setLoadingData] = useState(false);
   const [loadingBarberServices, setLoadingBarberServices] = useState(false);
@@ -148,6 +172,104 @@ export function AdminManualAppointment({
     setSelectedBarberServiceIds([]);
   }
 
+  function formatDate(date: string) {
+    return new Intl.DateTimeFormat("es-AR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "America/Argentina/Buenos_Aires",
+    }).format(new Date(date));
+  }
+
+  function formatCurrency(value?: string | number) {
+    const price = Number(value || 0);
+
+    if (Number.isNaN(price)) return "$0";
+
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(price);
+  }
+
+  function getStatusLabel(status: string) {
+    if (status === "CONFIRMED") return "Confirmado";
+    if (status === "CANCELLED") return "Cancelado";
+    if (status === "PENDING") return "Pendiente";
+    if (status === "COMPLETED") return "Completado";
+    if (status === "NO_SHOW") return "No asistió";
+
+    return status;
+  }
+
+  function normalizePhoneForWhatsApp(phone: string) {
+    let digits = phone.replace(/\D/g, "");
+
+    if (!digits) return "";
+
+    if (digits.startsWith("549")) return digits;
+
+    if (digits.startsWith("54")) return `549${digits.slice(2)}`;
+
+    if (digits.startsWith("0")) {
+      digits = digits.slice(1);
+    }
+
+    if (digits.startsWith("15")) {
+      digits = digits.slice(2);
+    }
+
+    return `549${digits}`;
+  }
+
+  function buildReceiptText(appointment: CreatedAppointment) {
+    return `Comprobante de turno - Nacho Barbershop
+
+Cliente: ${appointment.client?.fullName || "Cliente"}
+Email: ${appointment.client?.email || "Sin email"}
+Teléfono: ${appointment.client?.phone || "Sin teléfono"}
+
+Servicio: ${appointment.service?.name || "Servicio"}
+Barbero: ${appointment.barber?.displayName || "Barbero"}
+Fecha: ${formatDate(appointment.startAt)}
+Estado: ${getStatusLabel(appointment.status)}
+Precio: ${formatCurrency(appointment.service?.price)}
+
+Notas: ${appointment.notes || "Sin notas"}
+
+Muchas gracias por reservar.`;
+  }
+
+  async function copyReceipt() {
+    if (!createdAppointment) return;
+
+    try {
+      await navigator.clipboard.writeText(buildReceiptText(createdAppointment));
+      setMessage("Comprobante copiado correctamente.");
+    } catch {
+      setMessage("No se pudo copiar el comprobante.");
+    }
+  }
+
+  function sendReceiptByWhatsApp() {
+    if (!createdAppointment) return;
+
+    const rawPhone = createdAppointment.client?.phone || "";
+    const whatsappPhone = normalizePhoneForWhatsApp(rawPhone);
+
+    if (!whatsappPhone) {
+      setMessage("Este cliente no tiene teléfono cargado.");
+      return;
+    }
+
+    window.open(
+      `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(
+        buildReceiptText(createdAppointment)
+      )}`,
+      "_blank"
+    );
+  }
+
   async function createManualAppointment() {
     const token = localStorage.getItem("barberflow_admin_token");
 
@@ -184,6 +306,7 @@ export function AdminManualAppointment({
     try {
       setLoadingCreate(true);
       setMessage("");
+      setCreatedAppointment(null);
 
       const response = await fetch(`${API_URL}/v1/appointments/admin/create`, {
         method: "POST",
@@ -213,6 +336,7 @@ export function AdminManualAppointment({
         return;
       }
 
+      setCreatedAppointment(data);
       setMessage("Turno manual creado correctamente.");
       clearForm();
       onCreated?.();
@@ -224,13 +348,9 @@ export function AdminManualAppointment({
   }
 
   const availableServices = useMemo(() => {
-    if (!barberId) {
-      return [];
-    }
+    if (!barberId) return [];
 
-    if (selectedBarberServiceIds.length === 0) {
-      return [];
-    }
+    if (selectedBarberServiceIds.length === 0) return [];
 
     return services.filter((service) =>
       selectedBarberServiceIds.includes(service.id)
@@ -339,13 +459,17 @@ export function AdminManualAppointment({
             <option value="">Cargando servicios...</option>
           )}
 
-          {barberId && !loadingBarberServices && availableServices.length === 0 && (
-            <option value="">Sin servicios asignados</option>
-          )}
+          {barberId &&
+            !loadingBarberServices &&
+            availableServices.length === 0 && (
+              <option value="">Sin servicios asignados</option>
+            )}
 
-          {barberId && !loadingBarberServices && availableServices.length > 0 && (
-            <option value="">Seleccionar servicio</option>
-          )}
+          {barberId &&
+            !loadingBarberServices &&
+            availableServices.length > 0 && (
+              <option value="">Seleccionar servicio</option>
+            )}
 
           {availableServices.map((service) => (
             <option key={service.id} value={service.id}>
@@ -393,6 +517,73 @@ export function AdminManualAppointment({
           )}
         </button>
       </div>
+
+      {createdAppointment && (
+        <div className="mt-5 rounded-2xl border border-green-500/30 bg-green-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-300">
+            Comprobante generado
+          </p>
+
+          <h5 className="mt-2 text-lg font-black text-white">
+            Turno creado correctamente
+          </h5>
+
+          <div className="mt-3 grid gap-1 text-sm text-zinc-300">
+            <p>
+              Cliente:{" "}
+              <span className="text-white">
+                {createdAppointment.client?.fullName || "Cliente"}
+              </span>
+            </p>
+
+            <p>
+              Servicio:{" "}
+              <span className="text-white">
+                {createdAppointment.service?.name || "Servicio"}
+              </span>
+            </p>
+
+            <p>
+              Barbero:{" "}
+              <span className="text-white">
+                {createdAppointment.barber?.displayName || "Barbero"}
+              </span>
+            </p>
+
+            <p>
+              Fecha:{" "}
+              <span className="text-white">
+                {formatDate(createdAppointment.startAt)}
+              </span>
+            </p>
+
+            <p>
+              Estado:{" "}
+              <span className="text-green-300">
+                {getStatusLabel(createdAppointment.status)}
+              </span>
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={copyReceipt}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              <ClipboardCopy size={17} />
+              Copiar comprobante
+            </button>
+
+            <button
+              onClick={sendReceiptByWhatsApp}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-3 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
+            >
+              <MessageCircle size={17} />
+              Enviar por WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
