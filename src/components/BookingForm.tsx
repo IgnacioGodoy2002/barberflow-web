@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  ClipboardCopy,
   Clock,
   Loader2,
   LogIn,
@@ -54,6 +55,10 @@ type ConfirmedBooking = {
   date: string;
   time: string;
   notes: string;
+  price: string | number;
+  status: string;
+  clientName: string;
+  clientEmail: string;
 };
 
 type AuthTab = "login" | "register";
@@ -375,20 +380,67 @@ export function BookingForm({
     setMessage("Sesión cerrada.");
   }
 
-  function sendBookingToWhatsApp() {
-    if (!confirmedBooking) return;
+  function formatCurrency(value: string | number) {
+    const price = Number(value || 0);
 
-    const message = `Hola Nacho, te paso el comprobante de mi turno:
+    if (Number.isNaN(price)) return "$0";
+
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    }).format(price);
+  }
+
+  function getStatusLabel(status: string) {
+    if (status === "CONFIRMED") return "Confirmado";
+    if (status === "CANCELLED") return "Cancelado";
+    if (status === "PENDING") return "Pendiente";
+    if (status === "COMPLETED") return "Completado";
+    if (status === "NO_SHOW") return "No asistió";
+
+    return status;
+  }
+
+  function buildBookingReceiptText() {
+    if (!confirmedBooking) return "";
+
+    return `Comprobante de turno - Nacho Barbershop
+
+Cliente: ${confirmedBooking.clientName}
+Email: ${confirmedBooking.clientEmail}
 
 Servicio: ${confirmedBooking.serviceName}
 Barbero: ${confirmedBooking.barberName}
 Fecha: ${confirmedBooking.date}
 Hora: ${confirmedBooking.time}
+Estado: ${getStatusLabel(confirmedBooking.status)}
+Precio: ${formatCurrency(confirmedBooking.price)}
+
 Notas: ${confirmedBooking.notes || "Sin notas"}
 
-Gracias.`;
+Muchas gracias por reservar.`;
+  }
 
-    const encodedMessage = encodeURIComponent(message);
+  async function copyBookingReceipt() {
+    if (!confirmedBooking) return;
+
+    try {
+      await navigator.clipboard.writeText(buildBookingReceiptText());
+      setMessage("Comprobante copiado correctamente.");
+    } catch {
+      setMessage("No se pudo copiar el comprobante.");
+    }
+  }
+
+  function sendBookingToWhatsApp() {
+    if (!confirmedBooking) return;
+
+    const encodedMessage = encodeURIComponent(
+      `Hola Nacho, te paso el comprobante de mi turno:
+
+${buildBookingReceiptText()}`
+    );
 
     window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
   }
@@ -445,11 +497,16 @@ Gracias.`;
       }
 
       setConfirmedBooking({
-        serviceName: selectedService?.name || "Servicio",
-        barberName: selectedBarber?.displayName || "Barbero",
+        serviceName: data.service?.name || selectedService?.name || "Servicio",
+        barberName:
+          data.barber?.displayName || selectedBarber?.displayName || "Barbero",
         date,
         time: selectedSlot.label,
-        notes,
+        notes: data.notes || notes,
+        price: data.service?.price || selectedService?.price || 0,
+        status: data.status || "CONFIRMED",
+        clientName: data.client?.fullName || "Cliente",
+        clientEmail: data.client?.email || email || "Sin email",
       });
 
       setMessage("Turno confirmado correctamente.");
@@ -692,6 +749,20 @@ Gracias.`;
 
           <div className="grid gap-3 text-sm text-zinc-300 md:grid-cols-2">
             <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Cliente</p>
+              <p className="mt-1 font-bold text-white">
+                {confirmedBooking.clientName}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Email</p>
+              <p className="mt-1 font-bold text-white">
+                {confirmedBooking.clientEmail}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
               <p className="text-zinc-500">Servicio</p>
               <p className="mt-1 font-bold text-white">
                 {confirmedBooking.serviceName}
@@ -718,6 +789,20 @@ Gracias.`;
                 {confirmedBooking.time}
               </p>
             </div>
+
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Estado</p>
+              <p className="mt-1 font-bold text-green-300">
+                {getStatusLabel(confirmedBooking.status)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-zinc-950/60 p-4">
+              <p className="text-zinc-500">Precio</p>
+              <p className="mt-1 font-bold text-white">
+                {formatCurrency(confirmedBooking.price)}
+              </p>
+            </div>
           </div>
 
           {confirmedBooking.notes && (
@@ -732,13 +817,23 @@ Gracias.`;
             sección “Mis turnos”.
           </p>
 
-          <button
-            onClick={sendBookingToWhatsApp}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-500"
-          >
-            <MessageCircle size={18} />
-            Enviar comprobante por WhatsApp
-          </button>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <button
+              onClick={copyBookingReceipt}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              <ClipboardCopy size={18} />
+              Copiar comprobante
+            </button>
+
+            <button
+              onClick={sendBookingToWhatsApp}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-500"
+            >
+              <MessageCircle size={18} />
+              Enviar por WhatsApp
+            </button>
+          </div>
 
           <button
             onClick={bookAgain}
