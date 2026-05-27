@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarPlus,
+  ChevronDown,
+  ChevronUp,
   ClipboardCopy,
   Loader2,
   MessageCircle,
@@ -52,6 +54,8 @@ type AdminManualAppointmentProps = {
 export function AdminManualAppointment({
   onCreated,
 }: AdminManualAppointmentProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [selectedBarberServiceIds, setSelectedBarberServiceIds] = useState<
@@ -339,6 +343,7 @@ Muchas gracias por reservar.`;
       setCreatedAppointment(data);
       setMessage("Turno manual creado correctamente.");
       clearForm();
+      setIsOpen(false);
       onCreated?.();
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -349,7 +354,6 @@ Muchas gracias por reservar.`;
 
   const availableServices = useMemo(() => {
     if (!barberId) return [];
-
     if (selectedBarberServiceIds.length === 0) return [];
 
     return services.filter((service) =>
@@ -359,7 +363,7 @@ Muchas gracias por reservar.`;
 
   return (
     <div className="mb-5 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-4">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-600 text-white">
             <CalendarPlus size={20} />
@@ -371,152 +375,204 @@ Muchas gracias por reservar.`;
             </p>
 
             <h4 className="font-black text-white">Crear turno desde admin</h4>
+
+            <p className="mt-1 text-sm text-purple-100">
+              Cargá turnos pedidos por WhatsApp, teléfono o presencial.
+            </p>
           </div>
         </div>
 
-        <button
-          onClick={loadOptions}
-          disabled={loadingData}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
-        >
-          {loadingData ? (
-            <>
-              <Loader2 className="animate-spin" size={16} />
-              Cargando...
-            </>
-          ) : (
-            <>
-              <RefreshCcw size={16} />
-              Recargar datos
-            </>
-          )}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={loadOptions}
+            disabled={loadingData}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
+          >
+            {loadingData ? (
+              <>
+                <Loader2 className="animate-spin" size={16} />
+                Cargando...
+              </>
+            ) : (
+              <>
+                <RefreshCcw size={16} />
+                Recargar
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => setIsOpen((current) => !current)}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+          >
+            {isOpen ? (
+              <>
+                <ChevronUp size={17} />
+                Cerrar formulario
+              </>
+            ) : (
+              <>
+                <ChevronDown size={17} />
+                Crear nuevo turno
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="relative">
-          <UserRound
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
-            size={17}
-          />
-
-          <input
-            value={clientFullName}
-            onChange={(event) => setClientFullName(event.target.value)}
-            placeholder="Nombre del cliente"
-            className="w-full rounded-2xl border border-white/10 bg-black px-11 py-3 text-sm text-white outline-none focus:border-purple-500"
-          />
+      {message && (
+        <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+          {message}
         </div>
+      )}
 
-        <input
-          value={clientEmail}
-          onChange={(event) => setClientEmail(event.target.value)}
-          placeholder="Email del cliente"
-          type="email"
-          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-        />
+      {isOpen && (
+        <div className="mt-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
+          <div className="mb-4">
+            <p className="text-sm font-bold text-white">
+              Datos del turno manual
+            </p>
 
-        <input
-          value={clientPhone}
-          onChange={(event) => setClientPhone(event.target.value)}
-          placeholder="Teléfono del cliente"
-          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-        />
+            <p className="mt-1 text-sm text-zinc-400">
+              Al crear el turno, se guarda como confirmado y aparece en Turnos,
+              Calendario y Clientes.
+            </p>
+          </div>
 
-        <input
-          value={startAt}
-          onChange={(event) => setStartAt(event.target.value)}
-          type="datetime-local"
-          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-        />
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="relative">
+              <UserRound
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                size={17}
+              />
 
-        <select
-          value={barberId}
-          onChange={(event) => {
-            setBarberId(event.target.value);
-            setServiceId("");
-          }}
-          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-        >
-          <option value="">Seleccionar barbero</option>
+              <input
+                value={clientFullName}
+                onChange={(event) => setClientFullName(event.target.value)}
+                placeholder="Nombre del cliente"
+                className="w-full rounded-2xl border border-white/10 bg-black px-11 py-3 text-sm text-white outline-none focus:border-purple-500"
+              />
+            </div>
 
-          {barbers.map((barber) => (
-            <option key={barber.id} value={barber.id}>
-              {barber.displayName}
-            </option>
-          ))}
-        </select>
+            <input
+              value={clientEmail}
+              onChange={(event) => setClientEmail(event.target.value)}
+              placeholder="Email del cliente"
+              type="email"
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
+            />
 
-        <select
-          value={serviceId}
-          onChange={(event) => setServiceId(event.target.value)}
-          disabled={!barberId || loadingBarberServices}
-          className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {!barberId && <option value="">Primero seleccioná un barbero</option>}
+            <input
+              value={clientPhone}
+              onChange={(event) => setClientPhone(event.target.value)}
+              placeholder="Teléfono del cliente"
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
+            />
 
-          {barberId && loadingBarberServices && (
-            <option value="">Cargando servicios...</option>
-          )}
+            <input
+              value={startAt}
+              onChange={(event) => setStartAt(event.target.value)}
+              type="datetime-local"
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
+            />
 
-          {barberId &&
-            !loadingBarberServices &&
-            availableServices.length === 0 && (
-              <option value="">Sin servicios asignados</option>
-            )}
+            <select
+              value={barberId}
+              onChange={(event) => {
+                setBarberId(event.target.value);
+                setServiceId("");
+              }}
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
+            >
+              <option value="">Seleccionar barbero</option>
+
+              {barbers.map((barber) => (
+                <option key={barber.id} value={barber.id}>
+                  {barber.displayName}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={serviceId}
+              onChange={(event) => setServiceId(event.target.value)}
+              disabled={!barberId || loadingBarberServices}
+              className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {!barberId && (
+                <option value="">Primero seleccioná un barbero</option>
+              )}
+
+              {barberId && loadingBarberServices && (
+                <option value="">Cargando servicios...</option>
+              )}
+
+              {barberId &&
+                !loadingBarberServices &&
+                availableServices.length === 0 && (
+                  <option value="">Sin servicios asignados</option>
+                )}
+
+              {barberId &&
+                !loadingBarberServices &&
+                availableServices.length > 0 && (
+                  <option value="">Seleccionar servicio</option>
+                )}
+
+              {availableServices.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
+
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Notas. Ej: Turno pedido por WhatsApp, cliente quiere corte clásico..."
+              className="min-h-24 rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500 md:col-span-2"
+            />
+          </div>
 
           {barberId &&
             !loadingBarberServices &&
             availableServices.length > 0 && (
-              <option value="">Seleccionar servicio</option>
+              <p className="mt-3 rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+                Mostrando solo los servicios asignados al barbero seleccionado.
+              </p>
             )}
 
-          {availableServices.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name}
-            </option>
-          ))}
-        </select>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              onClick={() => {
+                clearForm();
+                setMessage("");
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Limpiar
+            </button>
 
-        <textarea
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          placeholder="Notas. Ej: Turno pedido por WhatsApp, cliente quiere corte clásico..."
-          className="min-h-24 rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500 md:col-span-2"
-        />
-      </div>
-
-      {barberId && !loadingBarberServices && availableServices.length > 0 && (
-        <p className="mt-3 rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-          Mostrando solo los servicios asignados al barbero seleccionado.
-        </p>
-      )}
-
-      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        {message && (
-          <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
-            {message}
+            <button
+              onClick={createManualAppointment}
+              disabled={loadingCreate}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-purple-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60"
+            >
+              {loadingCreate ? (
+                <>
+                  <Loader2 className="animate-spin" size={17} />
+                  Creando...
+                </>
+              ) : (
+                <>
+                  <Save size={17} />
+                  Crear turno manual
+                </>
+              )}
+            </button>
           </div>
-        )}
-
-        <button
-          onClick={createManualAppointment}
-          disabled={loadingCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-purple-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60"
-        >
-          {loadingCreate ? (
-            <>
-              <Loader2 className="animate-spin" size={17} />
-              Creando...
-            </>
-          ) : (
-            <>
-              <Save size={17} />
-              Crear turno manual
-            </>
-          )}
-        </button>
-      </div>
+        </div>
+      )}
 
       {createdAppointment && (
         <div className="mt-5 rounded-2xl border border-green-500/30 bg-green-500/10 p-4">
