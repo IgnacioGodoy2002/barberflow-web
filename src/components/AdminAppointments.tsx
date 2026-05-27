@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  ClipboardCopy,
   Download,
   Edit3,
   Filter,
@@ -168,77 +169,78 @@ export function AdminAppointments() {
   }
 
   async function cancelAppointment(appointmentId: string) {
-  const token = localStorage.getItem("barberflow_admin_token");
+    const token = localStorage.getItem("barberflow_admin_token");
 
-  if (!token) {
-    setMessage("Primero iniciá sesión como admin.");
-    return;
-  }
+    if (!token) {
+      setMessage("Primero iniciá sesión como admin.");
+      return;
+    }
 
-  const reason = window.prompt(
-    `Ingresá el motivo de cancelación:
+    const reason = window.prompt(
+      `Ingresá el motivo de cancelación:
 
 Ejemplos:
 - Cliente avisó que no puede venir
 - Reprogramó para otro día
 - Cancelado por la barbería
 - No respondió`
-  );
-
-  if (reason === null) return;
-
-  const cleanReason = reason.trim();
-
-  if (!cleanReason) {
-    setMessage("Para cancelar el turno tenés que ingresar un motivo.");
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `¿Seguro que querés cancelar este turno?
-
-Motivo: ${cleanReason}`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    setLoadingStatusId(appointmentId);
-    setMessage("");
-
-    const response = await fetch(
-      `${API_URL}/v1/appointments/${appointmentId}/cancel`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          reason: cleanReason,
-        }),
-      }
     );
 
-    const data = await response.json().catch(() => ({}));
+    if (reason === null) return;
 
-    if (!response.ok) {
-      const apiMessage = Array.isArray(data.message)
-        ? data.message.join(", ")
-        : data.message || "No se pudo cancelar el turno.";
+    const cleanReason = reason.trim();
 
-      setMessage(apiMessage);
+    if (!cleanReason) {
+      setMessage("Para cancelar el turno tenés que ingresar un motivo.");
       return;
     }
 
-    setMessage("Turno cancelado correctamente con motivo guardado.");
-    await loadData();
-  } catch {
-    setMessage("No se pudo conectar con la API.");
-  } finally {
-    setLoadingStatusId(null);
+    const confirmed = window.confirm(
+      `¿Seguro que querés cancelar este turno?
+
+Motivo: ${cleanReason}`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setLoadingStatusId(appointmentId);
+      setMessage("");
+
+      const response = await fetch(
+        `${API_URL}/v1/appointments/${appointmentId}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reason: cleanReason,
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const apiMessage = Array.isArray(data.message)
+          ? data.message.join(", ")
+          : data.message || "No se pudo cancelar el turno.";
+
+        setMessage(apiMessage);
+        return;
+      }
+
+      setMessage("Turno cancelado correctamente con motivo guardado.");
+      await loadData();
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingStatusId(null);
+    }
   }
-}
+
   async function updateAppointmentStatus(
     appointmentId: string,
     status: "CONFIRMED" | "COMPLETED" | "NO_SHOW"
@@ -522,6 +524,58 @@ Cualquier consulta nos avisás.`;
     );
   }
 
+  function buildAppointmentReceiptText(appointment: Appointment) {
+    return `Comprobante de turno - Nacho Barbershop
+
+Cliente: ${getClientName(appointment)}
+Email: ${getClientEmail(appointment)}
+Teléfono: ${getClientPhoneLabel(appointment)}
+
+Servicio: ${appointment.service?.name || "Servicio"}
+Barbero: ${appointment.barber?.displayName || "Barbero"}
+Fecha: ${formatDate(appointment.startAt)}
+Estado: ${getStatusLabel(appointment.status)}
+Precio: $${getPrice(appointment).toLocaleString("es-AR")}
+
+Notas: ${appointment.notes || "Sin notas"}${
+      appointment.cancelReason
+        ? `
+
+Motivo de cancelación: ${appointment.cancelReason}`
+        : ""
+    }
+
+Muchas gracias por reservar.`;
+  }
+
+  async function copyAppointmentReceipt(appointment: Appointment) {
+    try {
+      await navigator.clipboard.writeText(
+        buildAppointmentReceiptText(appointment)
+      );
+      setMessage("Comprobante copiado correctamente.");
+    } catch {
+      setMessage("No se pudo copiar el comprobante.");
+    }
+  }
+
+  function sendAppointmentReceiptByWhatsApp(appointment: Appointment) {
+    const rawPhone = getClientPhone(appointment);
+    const whatsappPhone = normalizePhoneForWhatsApp(rawPhone);
+
+    if (!whatsappPhone) {
+      setMessage("Este cliente no tiene teléfono cargado.");
+      return;
+    }
+
+    window.open(
+      `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(
+        buildAppointmentReceiptText(appointment)
+      )}`,
+      "_blank"
+    );
+  }
+
   function escapeCsvValue(value: string | number) {
     const text = String(value ?? "");
     return `"${text.replaceAll('"', '""')}"`;
@@ -675,7 +729,9 @@ Cualquier consulta nos avisás.`;
           )}
         </button>
       </div>
-<AdminManualAppointment onCreated={loadData} />
+
+      <AdminManualAppointment onCreated={loadData} />
+
       {editingAppointmentId && (
         <div
           ref={editFormRef}
@@ -977,6 +1033,22 @@ Cualquier consulta nos avisás.`;
                   >
                     <MessageCircle size={17} />
                     WhatsApp
+                  </button>
+
+                  <button
+                    onClick={() => copyAppointmentReceipt(appointment)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                  >
+                    <ClipboardCopy size={17} />
+                    Copiar comprobante
+                  </button>
+
+                  <button
+                    onClick={() => sendAppointmentReceiptByWhatsApp(appointment)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
+                  >
+                    <MessageCircle size={17} />
+                    Enviar comprobante
                   </button>
 
                   {appointment.status !== "CANCELLED" &&
