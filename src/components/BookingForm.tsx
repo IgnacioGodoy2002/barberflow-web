@@ -63,6 +63,8 @@ type ConfirmedBooking = {
 
 type AuthTab = "login" | "register";
 
+const BARBERSHOP_WHATSAPP = "5492320598170";
+
 export function BookingForm({
   services,
   barbers,
@@ -442,7 +444,10 @@ Muchas gracias por reservar.`;
 ${buildBookingReceiptText()}`
     );
 
-    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
+    window.open(
+      `https://wa.me/${BARBERSHOP_WHATSAPP}?text=${encodedMessage}`,
+      "_blank"
+    );
   }
 
   function bookAgain() {
