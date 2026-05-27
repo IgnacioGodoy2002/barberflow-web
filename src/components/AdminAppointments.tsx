@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ClipboardCopy,
   Download,
   Edit3,
@@ -80,6 +82,10 @@ export function AdminAppointments() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [barberFilter, setBarberFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
+
+  const [expandedActionsId, setExpandedActionsId] = useState<string | null>(
+    null
+  );
 
   const [editingAppointmentId, setEditingAppointmentId] = useState<
     string | null
@@ -233,6 +239,7 @@ Motivo: ${cleanReason}`
       }
 
       setMessage("Turno cancelado correctamente con motivo guardado.");
+      setExpandedActionsId(null);
       await loadData();
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -295,6 +302,7 @@ Motivo: ${cleanReason}`
       }
 
       setMessage(`Turno marcado como ${statusText}.`);
+      setExpandedActionsId(null);
       await loadData();
     } catch {
       setMessage("No se pudo conectar con la API.");
@@ -314,6 +322,7 @@ Motivo: ${cleanReason}`
     setEditServiceId(appointment.service?.id || "");
     setEditStartAt(toDateTimeLocal(appointment.startAt));
     setEditNotes(appointment.notes || "");
+    setExpandedActionsId(null);
     setMessage("Editando turno seleccionado.");
   }
 
@@ -390,6 +399,13 @@ Motivo: ${cleanReason}`
     setStatusFilter("ALL");
     setBarberFilter("ALL");
     setDateFilter("");
+    setExpandedActionsId(null);
+  }
+
+  function toggleActions(appointmentId: string) {
+    setExpandedActionsId((current) =>
+      current === appointmentId ? null : appointmentId
+    );
   }
 
   function formatDate(date: string) {
@@ -479,13 +495,9 @@ Motivo: ${cleanReason}`
 
     if (!digits) return "";
 
-    if (digits.startsWith("549")) {
-      return digits;
-    }
+    if (digits.startsWith("549")) return digits;
 
-    if (digits.startsWith("54")) {
-      return `549${digits.slice(2)}`;
-    }
+    if (digits.startsWith("54")) return `549${digits.slice(2)}`;
 
     if (digits.startsWith("0")) {
       digits = digits.slice(1);
@@ -839,7 +851,10 @@ Muchas gracias por reservar.`;
 
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setExpandedActionsId(null);
+            }}
             className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
           >
             <option value="ALL">Todos los estados</option>
@@ -852,7 +867,10 @@ Muchas gracias por reservar.`;
 
           <select
             value={barberFilter}
-            onChange={(event) => setBarberFilter(event.target.value)}
+            onChange={(event) => {
+              setBarberFilter(event.target.value);
+              setExpandedActionsId(null);
+            }}
             className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
           >
             <option value="ALL">Todos los barberos</option>
@@ -866,7 +884,10 @@ Muchas gracias por reservar.`;
 
           <input
             value={dateFilter}
-            onChange={(event) => setDateFilter(event.target.value)}
+            onChange={(event) => {
+              setDateFilter(event.target.value);
+              setExpandedActionsId(null);
+            }}
             type="date"
             className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
           />
@@ -930,198 +951,234 @@ Muchas gracias por reservar.`;
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredAppointments.map((appointment) => (
-            <div
-              key={appointment.id}
-              className="rounded-2xl border border-white/10 bg-zinc-950 p-4 md:p-5"
-            >
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <p className="text-lg font-bold text-white">
-                      {appointment.service?.name || "Servicio"}
-                    </p>
+          {filteredAppointments.map((appointment) => {
+            const isExpanded = expandedActionsId === appointment.id;
 
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClass(
-                        appointment.status
-                      )}`}
-                    >
-                      {getStatusLabel(appointment.status)}
-                    </span>
+            return (
+              <div
+                key={appointment.id}
+                className="rounded-2xl border border-white/10 bg-zinc-950 p-4 md:p-5"
+              >
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <p className="text-lg font-bold text-white">
+                        {appointment.service?.name || "Servicio"}
+                      </p>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClass(
+                          appointment.status
+                        )}`}
+                      >
+                        {getStatusLabel(appointment.status)}
+                      </span>
+                    </div>
+
+                    <div className="grid gap-1 text-sm text-zinc-400">
+                      <p className="flex items-center gap-2">
+                        <UserRound size={15} />
+                        Cliente:{" "}
+                        <span className="text-zinc-200">
+                          {getClientName(appointment)}
+                        </span>
+                      </p>
+
+                      <p>
+                        Email:{" "}
+                        <span className="text-zinc-200">
+                          {getClientEmail(appointment)}
+                        </span>
+                      </p>
+
+                      <p>
+                        Teléfono:{" "}
+                        <span className="text-zinc-200">
+                          {getClientPhoneLabel(appointment)}
+                        </span>
+                      </p>
+
+                      <p>
+                        Barbero:{" "}
+                        <span className="text-zinc-200">
+                          {appointment.barber?.displayName || "Sin asignar"}
+                        </span>
+                      </p>
+
+                      <p>
+                        Fecha:{" "}
+                        <span className="text-zinc-200">
+                          {formatDate(appointment.startAt)}
+                        </span>
+                      </p>
+
+                      <p>
+                        Precio:{" "}
+                        <span className="text-zinc-200">
+                          ${getPrice(appointment).toLocaleString("es-AR")}
+                        </span>
+                      </p>
+                    </div>
+
+                    {appointment.notes && (
+                      <p className="mt-3 rounded-2xl bg-white/[0.04] p-3 text-sm text-zinc-400">
+                        Nota:{" "}
+                        <span className="text-zinc-200">
+                          {appointment.notes}
+                        </span>
+                      </p>
+                    )}
+
+                    {appointment.cancelReason && (
+                      <p className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
+                        Motivo de cancelación: {appointment.cancelReason}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="grid gap-1 text-sm text-zinc-400">
-                    <p className="flex items-center gap-2">
-                      <UserRound size={15} />
-                      Cliente:{" "}
-                      <span className="text-zinc-200">
-                        {getClientName(appointment)}
-                      </span>
-                    </p>
+                  <div className="w-full md:w-auto md:min-w-64">
+                    <button
+                      onClick={() => toggleActions(appointment.id)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp size={17} />
+                          Ocultar acciones
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={17} />
+                          Acciones
+                        </>
+                      )}
+                    </button>
 
-                    <p>
-                      Email:{" "}
-                      <span className="text-zinc-200">
-                        {getClientEmail(appointment)}
-                      </span>
-                    </p>
+                    {isExpanded && (
+                      <div className="mt-3 grid grid-cols-1 gap-2 rounded-2xl border border-white/10 bg-black p-3 sm:grid-cols-2 md:grid-cols-1">
+                        {appointment.status !== "CANCELLED" && (
+                          <button
+                            onClick={() => startEditAppointment(appointment)}
+                            disabled={
+                              loadingAppointments ||
+                              loadingStatusId === appointment.id
+                            }
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
+                          >
+                            <Edit3 size={17} />
+                            Editar
+                          </button>
+                        )}
 
-                    <p>
-                      Teléfono:{" "}
-                      <span className="text-zinc-200">
-                        {getClientPhoneLabel(appointment)}
-                      </span>
-                    </p>
+                        <button
+                          onClick={() => sendWhatsAppToClient(appointment)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
+                        >
+                          <MessageCircle size={17} />
+                          WhatsApp
+                        </button>
 
-                    <p>
-                      Barbero:{" "}
-                      <span className="text-zinc-200">
-                        {appointment.barber?.displayName || "Sin asignar"}
-                      </span>
-                    </p>
+                        <button
+                          onClick={() => copyAppointmentReceipt(appointment)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                        >
+                          <ClipboardCopy size={17} />
+                          Copiar comprobante
+                        </button>
 
-                    <p>
-                      Fecha:{" "}
-                      <span className="text-zinc-200">
-                        {formatDate(appointment.startAt)}
-                      </span>
-                    </p>
+                        <button
+                          onClick={() =>
+                            sendAppointmentReceiptByWhatsApp(appointment)
+                          }
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
+                        >
+                          <MessageCircle size={17} />
+                          Enviar comprobante
+                        </button>
 
-                    <p>
-                      Precio:{" "}
-                      <span className="text-zinc-200">
-                        ${getPrice(appointment).toLocaleString("es-AR")}
-                      </span>
-                    </p>
+                        {appointment.status !== "CANCELLED" &&
+                          appointment.status !== "COMPLETED" && (
+                            <button
+                              onClick={() =>
+                                updateAppointmentStatus(
+                                  appointment.id,
+                                  "COMPLETED"
+                                )
+                              }
+                              disabled={loadingStatusId === appointment.id}
+                              className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10 disabled:opacity-60"
+                            >
+                              {loadingStatusId === appointment.id ? (
+                                <Loader2 className="animate-spin" size={17} />
+                              ) : (
+                                <CheckCircle2 size={17} />
+                              )}
+                              Completado
+                            </button>
+                          )}
+
+                        {appointment.status !== "CANCELLED" &&
+                          appointment.status !== "NO_SHOW" && (
+                            <button
+                              onClick={() =>
+                                updateAppointmentStatus(
+                                  appointment.id,
+                                  "NO_SHOW"
+                                )
+                              }
+                              disabled={loadingStatusId === appointment.id}
+                              className="inline-flex items-center justify-center gap-2 rounded-full border border-orange-500/40 px-5 py-2.5 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-60"
+                            >
+                              {loadingStatusId === appointment.id ? (
+                                <Loader2 className="animate-spin" size={17} />
+                              ) : (
+                                <UserX size={17} />
+                              )}
+                              No asistió
+                            </button>
+                          )}
+
+                        {appointment.status !== "CANCELLED" &&
+                          appointment.status !== "CONFIRMED" && (
+                            <button
+                              onClick={() =>
+                                updateAppointmentStatus(
+                                  appointment.id,
+                                  "CONFIRMED"
+                                )
+                              }
+                              disabled={loadingStatusId === appointment.id}
+                              className="inline-flex items-center justify-center gap-2 rounded-full border border-yellow-500/40 px-5 py-2.5 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-500/10 disabled:opacity-60"
+                            >
+                              {loadingStatusId === appointment.id ? (
+                                <Loader2 className="animate-spin" size={17} />
+                              ) : (
+                                <RefreshCcw size={17} />
+                              )}
+                              Reconfirmar
+                            </button>
+                          )}
+
+                        {appointment.status !== "CANCELLED" && (
+                          <button
+                            onClick={() => cancelAppointment(appointment.id)}
+                            disabled={
+                              loadingAppointments ||
+                              loadingStatusId === appointment.id
+                            }
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+                          >
+                            <XCircle size={17} />
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {appointment.notes && (
-                    <p className="mt-3 rounded-2xl bg-white/[0.04] p-3 text-sm text-zinc-400">
-                      Nota:{" "}
-                      <span className="text-zinc-200">
-                        {appointment.notes}
-                      </span>
-                    </p>
-                  )}
-
-                  {appointment.cancelReason && (
-                    <p className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
-                      Motivo de cancelación: {appointment.cancelReason}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
-                  {appointment.status !== "CANCELLED" && (
-                    <button
-                      onClick={() => startEditAppointment(appointment)}
-                      disabled={
-                        loadingAppointments ||
-                        loadingStatusId === appointment.id
-                      }
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/40 px-5 py-2.5 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/10 disabled:opacity-60"
-                    >
-                      <Edit3 size={17} />
-                      Editar
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => sendWhatsAppToClient(appointment)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
-                  >
-                    <MessageCircle size={17} />
-                    WhatsApp
-                  </button>
-
-                  <button
-                    onClick={() => copyAppointmentReceipt(appointment)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
-                  >
-                    <ClipboardCopy size={17} />
-                    Copiar comprobante
-                  </button>
-
-                  <button
-                    onClick={() => sendAppointmentReceiptByWhatsApp(appointment)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10"
-                  >
-                    <MessageCircle size={17} />
-                    Enviar comprobante
-                  </button>
-
-                  {appointment.status !== "CANCELLED" &&
-                    appointment.status !== "COMPLETED" && (
-                      <button
-                        onClick={() =>
-                          updateAppointmentStatus(appointment.id, "COMPLETED")
-                        }
-                        disabled={loadingStatusId === appointment.id}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-green-500/40 px-5 py-2.5 text-sm font-semibold text-green-300 transition hover:bg-green-500/10 disabled:opacity-60"
-                      >
-                        {loadingStatusId === appointment.id ? (
-                          <Loader2 className="animate-spin" size={17} />
-                        ) : (
-                          <CheckCircle2 size={17} />
-                        )}
-                        Completado
-                      </button>
-                    )}
-
-                  {appointment.status !== "CANCELLED" &&
-                    appointment.status !== "NO_SHOW" && (
-                      <button
-                        onClick={() =>
-                          updateAppointmentStatus(appointment.id, "NO_SHOW")
-                        }
-                        disabled={loadingStatusId === appointment.id}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-orange-500/40 px-5 py-2.5 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/10 disabled:opacity-60"
-                      >
-                        {loadingStatusId === appointment.id ? (
-                          <Loader2 className="animate-spin" size={17} />
-                        ) : (
-                          <UserX size={17} />
-                        )}
-                        No asistió
-                      </button>
-                    )}
-
-                  {appointment.status !== "CANCELLED" &&
-                    appointment.status !== "CONFIRMED" && (
-                      <button
-                        onClick={() =>
-                          updateAppointmentStatus(appointment.id, "CONFIRMED")
-                        }
-                        disabled={loadingStatusId === appointment.id}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-yellow-500/40 px-5 py-2.5 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-500/10 disabled:opacity-60"
-                      >
-                        {loadingStatusId === appointment.id ? (
-                          <Loader2 className="animate-spin" size={17} />
-                        ) : (
-                          <RefreshCcw size={17} />
-                        )}
-                        Reconfirmar
-                      </button>
-                    )}
-
-                  {appointment.status !== "CANCELLED" && (
-                    <button
-                      onClick={() => cancelAppointment(appointment.id)}
-                      disabled={
-                        loadingAppointments ||
-                        loadingStatusId === appointment.id
-                      }
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/40 px-5 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
-                    >
-                      <XCircle size={17} />
-                      Cancelar
-                    </button>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
