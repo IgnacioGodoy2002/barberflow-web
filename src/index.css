@@ -1,1 +1,118 @@
 @import "tailwindcss";
+
+@theme {
+  --animate-rise-in: rise-in 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-float-soft: float-soft 7s ease-in-out infinite;
+  --animate-glow-pulse: glow-pulse 2.2s ease-in-out infinite;
+  --animate-wa-pulse: wa-pulse 2.6s ease-out infinite;
+}
+
+/* ---------- Keyframes (mismas del portfolio) ---------- */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+  50% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); }
+}
+@keyframes wa-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+  70%, 100% { box-shadow: 0 0 0 16px rgba(34, 197, 94, 0); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes lightbox-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Entrada del hero: los hijos suben escalonados ---------- */
+.hero-enter > * { animation: var(--animate-rise-in); }
+.hero-enter > *:nth-child(1) { animation-delay: 0.05s; }
+.hero-enter > *:nth-child(2) { animation-delay: 0.15s; }
+.hero-enter > *:nth-child(3) { animation-delay: 0.25s; }
+.hero-enter > *:nth-child(4) { animation-delay: 0.35s; }
+.hero-enter > *:nth-child(5) { animation-delay: 0.45s; }
+
+/* ---------- Aparición al hacer scroll ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  /* También mantiene las transiciones de hover de las cards (Tailwind usa
+     las propiedades `translate`/`scale`, no `transform`). */
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms),
+    translate 0.3s ease, scale 0.3s ease, border-color 0.3s ease,
+    background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.reveal.is-revealed { opacity: 1; transform: none; }
+
+/* ---------- Texto con brillo animado ---------- */
+.text-shimmer {
+  background: linear-gradient(90deg, #fff 0%, #c4b5fd 25%, #93c5fd 50%, #fff 75%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+/* ---------- Esqueleto de carga ---------- */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* ---------- Cursor animado (mismo que el portfolio) ---------- */
+.cursor-layer { position: fixed; inset: 0; pointer-events: none; z-index: 10000; mix-blend-mode: difference; }
+.cursor-label .cursor-layer { mix-blend-mode: normal; }
+.cursor-shell { position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none; will-change: transform; }
+.cursor-blob {
+  position: absolute; left: -7px; top: -7px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; opacity: 0;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, background-color 0.3s ease;
+}
+.cursor-visible .cursor-blob { opacity: 1; }
+.cursor-hover .cursor-blob { transform: scale(3.4); }
+.cursor-label .cursor-blob { transform: scale(5.6); background: #a855f7; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.cursor-down .cursor-blob { transform: scale(0.7); }
+.cursor-hover.cursor-down .cursor-blob { transform: scale(2.8); }
+.cursor-label.cursor-down .cursor-blob { transform: scale(5); }
+.cursor-text .cursor-blob { transform: scale(0.35); opacity: 0; }
+.cursor-text-label {
+  position: absolute; left: -40px; top: -10px; width: 80px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #fff; opacity: 0; transition: opacity 0.25s ease 0.05s;
+}
+.cursor-label .cursor-text-label { opacity: 1; }
+.has-custom-cursor, .has-custom-cursor * { cursor: none !important; }
+.has-custom-cursor input, .has-custom-cursor textarea, .has-custom-cursor [contenteditable="true"] { cursor: text !important; }
+/* Los <dialog> abiertos quedan por encima de todo: ahí volvemos al cursor normal. */
+html.has-custom-cursor:has(dialog[open]) .cursor-layer { display: none; }
+html.has-custom-cursor:has(dialog[open]) * { cursor: auto !important; }
+html.has-custom-cursor:has(dialog[open]) :is(a, button) { cursor: pointer !important; }
+
+/* Botones magnéticos */
+.magnetic { transition: translate 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, scale 0.2s ease; }
+.magnetic.is-magnetized { transition: translate 0.18s ease-out, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, scale 0.2s ease; }
+
+/* ---------- Respeta "reducir movimiento" ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+}

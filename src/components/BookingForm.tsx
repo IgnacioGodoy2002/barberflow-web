@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -14,6 +14,8 @@ import {
   UserRound,
 } from "lucide-react";
 import { API_URL } from "../config/api";
+import { BUSINESS } from "../config/business";
+import type { SelectionRequest } from "../types";
 
 type Service = {
   id: string;
@@ -45,8 +47,8 @@ type AvailabilityResponse = {
 type BookingFormProps = {
   services: Service[];
   barbers: Barber[];
-  initialSelectedServiceId?: string;
-  initialSelectedBarberId?: string;
+  serviceRequest?: SelectionRequest | null;
+  barberRequest?: SelectionRequest | null;
 };
 
 type ConfirmedBooking = {
@@ -63,13 +65,13 @@ type ConfirmedBooking = {
 
 type AuthTab = "login" | "register";
 
-const BARBERSHOP_WHATSAPP = "5492320598170";
+const BARBERSHOP_WHATSAPP = BUSINESS.whatsappNumber;
 
 export function BookingForm({
   services,
   barbers,
-  initialSelectedServiceId,
-  initialSelectedBarberId,
+  serviceRequest = null,
+  barberRequest = null,
 }: BookingFormProps) {
   const today = new Date().toLocaleDateString("en-CA", {
     timeZone: "America/Argentina/Buenos_Aires",
@@ -133,64 +135,59 @@ export function BookingForm({
     return services.filter((service) => barberServiceIds.has(service.id));
   }, [barberId, services, barbers]);
 
-  useEffect(() => {
-    if (!initialSelectedServiceId) return;
+  // Preselección desde las cards de Servicios/Barberos.
+  // Se ajusta el estado durante el render cuando llega un pedido nuevo
+  // (patrón recomendado por React en lugar de un useEffect). Antes, con
+  // useEffect, cambiar de barbero volvía a pisar el servicio elegido.
+  const [handledServiceRequest, setHandledServiceRequest] =
+    useState<SelectionRequest | null>(null);
+  const [handledBarberRequest, setHandledBarberRequest] =
+    useState<SelectionRequest | null>(null);
 
-    const serviceExists = services.some(
-      (service) => service.id === initialSelectedServiceId
-    );
+  if (serviceRequest !== handledServiceRequest) {
+    setHandledServiceRequest(serviceRequest);
 
-    if (!serviceExists) return;
+    if (serviceRequest && services.some((service) => service.id === serviceRequest.id)) {
+      setServiceId(serviceRequest.id);
+      resetAvailabilityState();
 
-    setServiceId(initialSelectedServiceId);
-    resetAvailabilityState();
-
-    const currentBarber = barbers.find((barber) => barber.id === barberId);
-    const barberCanDoService = currentBarber?.services?.some(
-      (item) => item.service.id === initialSelectedServiceId
-    );
-
-    if (barberId && !barberCanDoService) {
-      setBarberId("");
-      setMessage(
-        "Servicio seleccionado. Elegí un barbero que realice este servicio."
+      const currentBarber = barbers.find((barber) => barber.id === barberId);
+      const barberCanDoService = currentBarber?.services?.some(
+        (item) => item.service.id === serviceRequest.id
       );
-      return;
+
+      if (barberId && !barberCanDoService) {
+        setBarberId("");
+        setMessage("Servicio seleccionado. Elegí un barbero que realice este servicio.");
+      } else {
+        setMessage("Servicio seleccionado. Elegí fecha y consultá horarios.");
+      }
     }
+  }
 
-    setMessage("Servicio seleccionado. Elegí fecha y consultá horarios.");
-  }, [initialSelectedServiceId, services, barbers, barberId]);
+  if (barberRequest !== handledBarberRequest) {
+    setHandledBarberRequest(barberRequest);
 
-  useEffect(() => {
-    if (!initialSelectedBarberId) return;
+    const requestedBarber = barberRequest
+      ? barbers.find((barber) => barber.id === barberRequest.id)
+      : undefined;
 
-    const barberExists = barbers.some(
-      (barber) => barber.id === initialSelectedBarberId
-    );
+    if (barberRequest && requestedBarber) {
+      setBarberId(barberRequest.id);
+      resetAvailabilityState();
 
-    if (!barberExists) return;
-
-    setBarberId(initialSelectedBarberId);
-    resetAvailabilityState();
-
-    const selectedCardBarber = barbers.find(
-      (barber) => barber.id === initialSelectedBarberId
-    );
-
-    const barberCanDoCurrentService = selectedCardBarber?.services?.some(
-      (item) => item.service.id === serviceId
-    );
-
-    if (serviceId && !barberCanDoCurrentService) {
-      setServiceId("");
-      setMessage(
-        "Barbero seleccionado. Elegí un servicio que realice este barbero."
+      const barberCanDoCurrentService = requestedBarber.services?.some(
+        (item) => item.service.id === serviceId
       );
-      return;
-    }
 
-    setMessage("Barbero seleccionado. Elegí fecha y consultá horarios.");
-  }, [initialSelectedBarberId, barbers, serviceId]);
+      if (serviceId && !barberCanDoCurrentService) {
+        setServiceId("");
+        setMessage("Barbero seleccionado. Elegí un servicio que realice este barbero.");
+      } else {
+        setMessage("Barbero seleccionado. Elegí fecha y consultá horarios.");
+      }
+    }
+  }
 
   function resetAvailabilityState() {
     setSlots([]);

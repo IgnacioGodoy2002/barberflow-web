@@ -1,27 +1,79 @@
 <!doctype html>
-<html lang="en">
+<html lang="es-AR">
   <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
 
-  <title>Nacho Barbershop | BarberFlow</title>
+    <title>Nacho Barbershop | Reservá tu turno online · BarberFlow</title>
+    <meta
+      name="description"
+      content="Reservá tu turno en Nacho Barbershop (Hipólito Bouchard 2086). Elegí servicio, barbero y horario disponible en tiempo real. Sistema de turnos BarberFlow."
+    />
+    <meta name="author" content="Ignacio Gabriel Godoy" />
+    <link rel="canonical" href="https://barberflow-web-six.vercel.app/" />
 
-  <meta
-    name="description"
-    content="Sistema web de turnos para barbería. Consultá servicios, barberos, disponibilidad y reservá online con Nacho Barbershop."
-  />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
-  <meta property="og:title" content="Nacho Barbershop | BarberFlow" />
-  <meta
-    property="og:description"
-    content="Reservá tu turno de barbería online de forma simple, rápida y profesional."
-  />
-  <meta property="og:image" content="/favicon.png" />
-  <meta property="og:type" content="website" />
-</head>
-  
-  <body>
+    <!-- Vista previa al compartir el link (WhatsApp, Instagram, LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:site_name" content="Nacho Barbershop" />
+    <meta property="og:title" content="Nacho Barbershop | Reservá tu turno online" />
+    <meta
+      property="og:description"
+      content="Elegí servicio, barbero y horario disponible. Reservá en pocos clics."
+    />
+    <meta property="og:url" content="https://barberflow-web-six.vercel.app/" />
+    <meta property="og:image" content="https://barberflow-web-six.vercel.app/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Nacho Barbershop: reservá tu turno online" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Arranca la conexión con la API mientras carga la página -->
+    <link rel="preconnect" href="https://barberflow-api-9feo.onrender.com" crossorigin />
+
+    <!-- Datos estructurados para Google (negocio local) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HairSalon",
+        "name": "Nacho Barbershop",
+        "url": "https://barberflow-web-six.vercel.app/",
+        "image": "https://barberflow-web-six.vercel.app/og-image.jpg",
+        "logo": "https://barberflow-web-six.vercel.app/icon-512.png",
+        "telephone": "+54 9 2320 59-8170",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Hipólito Bouchard 2086",
+          "addressCountry": "AR"
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            "opens": "10:00",
+            "closes": "20:00"
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Saturday",
+            "opens": "10:00",
+            "closes": "18:00"
+          }
+        ]
+      }
+    </script>
+  </head>
+
+  <body class="bg-zinc-950">
+    <noscript>
+      Para reservar tu turno necesitás activar JavaScript. También podés escribirnos por
+      WhatsApp al +54 9 2320 59-8170.
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
