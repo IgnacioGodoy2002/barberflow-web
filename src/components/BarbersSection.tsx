@@ -1,84 +1,45 @@
 import { CalendarDays, Scissors, Sparkles, UserRound } from "lucide-react";
-
-type Service = {
-  id: string;
-  name: string;
-  description?: string;
-  durationMinutes: number;
-  bufferMinutes: number;
-  price: string | number;
-};
-
-type Barber = {
-  id: string;
-  displayName: string;
-  bio?: string;
-  services: {
-    service: Service;
-  }[];
-};
+import type { Barber } from "../types";
+import { SectionHeading } from "./SectionHeading";
+import { ApiError, SkeletonGrid } from "./StatusMessages";
 
 type BarbersSectionProps = {
   barbers: Barber[];
   loading: boolean;
   error: string;
+  onRetry: () => void;
   onSelectBarber: (barberId: string) => void;
 };
 
-export function BarbersSection({
-  barbers,
-  loading,
-  error,
-  onSelectBarber,
-}: BarbersSectionProps) {
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+export function BarbersSection({ barbers, loading, error, onRetry, onSelectBarber }: BarbersSectionProps) {
   return (
-    <section id="barberos" className="mx-auto max-w-6xl px-6 py-16">
-      <div className="mb-10 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-purple-400">
-          Barberos
-        </p>
+    <section id="barberos" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-16">
+      <SectionHeading
+        eyebrow="Barberos"
+        accent="purple"
+        title="Profesionales disponibles"
+        description="Elegí el profesional que preferís y reservá un turno según sus servicios y disponibilidad."
+      />
 
-        <h2 className="mt-3 text-3xl font-black text-white md:text-4xl">
-          Profesionales disponibles
-        </h2>
+      {loading && <SkeletonGrid count={2} className="grid gap-5 md:grid-cols-2" />}
 
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-          Elegí el profesional que preferís y reservá un turno según sus
-          servicios y disponibilidad.
-        </p>
-      </div>
-
-      {loading && (
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
-            <UserRound className="animate-pulse" size={22} />
-          </div>
-
-          <p className="font-bold text-white">Cargando barberos...</p>
-
-          <p className="mt-2 text-sm text-zinc-400">
-            Estamos consultando los profesionales disponibles.
-          </p>
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-center text-red-200">
-          {error}
-        </div>
-      )}
+      {error && <ApiError message={error} onRetry={onRetry} />}
 
       {!loading && !error && barbers.length === 0 && (
         <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center">
           <UserRound className="mx-auto mb-4 text-zinc-500" size={38} />
-
-          <p className="text-lg font-bold text-white">
-            No hay barberos cargados
-          </p>
-
+          <p className="text-lg font-bold text-white">No hay barberos cargados</p>
           <p className="mt-2 text-sm text-zinc-400">
-            Cuando el administrador cargue barberos, van a aparecer en esta
-            sección.
+            Cuando el administrador cargue barberos, van a aparecer en esta sección.
           </p>
         </div>
       )}
@@ -88,9 +49,10 @@ export function BarbersSection({
           {barbers.map((barber, index) => (
             <article
               key={barber.id}
-              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 transition hover:-translate-y-1 hover:border-purple-500/40 hover:bg-white/[0.07]"
+              data-reveal
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 transition duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:bg-white/[0.07] hover:shadow-2xl hover:shadow-purple-900/20"
             >
-              {index === 0 && (
+              {index === 0 && barbers.length > 1 && (
                 <div className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-300">
                   <Sparkles size={13} />
                   Destacado
@@ -98,17 +60,16 @@ export function BarbersSection({
               )}
 
               <div className="mb-5 flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-purple-500/20 text-purple-300 transition group-hover:scale-105">
-                  <UserRound size={28} />
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-500/30 to-blue-500/20 text-xl font-black text-purple-100 transition duration-300 group-hover:scale-105">
+                  {initials(barber.displayName) || <UserRound size={28} />}
                 </div>
 
                 <div className="pr-20">
-                  <h3 className="text-xl font-bold text-white">
-                    {barber.displayName}
-                  </h3>
-
+                  <h3 className="text-xl font-bold text-white">{barber.displayName}</h3>
                   <p className="mt-1 text-sm text-zinc-400">
-                    Barbero disponible
+                    {barber.services?.length
+                      ? `${barber.services.length} ${barber.services.length === 1 ? "servicio" : "servicios"}`
+                      : "Barbero"}
                   </p>
                 </div>
               </div>
@@ -135,18 +96,18 @@ export function BarbersSection({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-500">
-                    Todavía no tiene servicios asignados.
-                  </p>
+                  <p className="text-sm text-zinc-500">Todavía no tiene servicios asignados.</p>
                 )}
               </div>
 
               <button
+                type="button"
                 onClick={() => onSelectBarber(barber.id)}
+                data-cursor-label="Reservar"
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
               >
                 <CalendarDays size={17} />
-                Reservar con este barbero
+                Reservar con {barber.displayName.split(" ")[0]}
               </button>
             </article>
           ))}
