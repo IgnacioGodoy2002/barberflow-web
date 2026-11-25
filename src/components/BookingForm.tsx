@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  BellRing,
+  CalendarPlus,
   ClipboardCopy,
   Clock,
+  CreditCard,
+  Download,
   Loader2,
   LogIn,
   LogOut,
@@ -16,6 +20,8 @@ import {
 import { API_URL } from "../config/api";
 import { BUSINESS } from "../config/business";
 import type { SelectionRequest } from "../types";
+import { downloadIcs, googleCalendarUrl } from "../lib/calendar";
+import { APPOINTMENTS_CHANGED } from "../lib/events";
 
 type Service = {
   id: string;
@@ -52,6 +58,13 @@ type BookingFormProps = {
 };
 
 type ConfirmedBooking = {
+  startAt: string;
+  endAt: string;
+  payment: {
+    amount: string | number;
+    checkoutUrl: string | null;
+    expiresAt: string;
+  } | null;
   serviceName: string;
   barberName: string;
   date: string;
@@ -64,6 +77,17 @@ type ConfirmedBooking = {
 };
 
 type AuthTab = "login" | "register";
+
+type PaymentsConfig = { enabled: boolean; depositPercent: number; timeoutMinutes: number };
+
+/** Mensaje al volver de Mercado Pago (?pago=aprobado|pendiente|error). */
+function paymentReturnMessage() {
+  const status = new URLSearchParams(window.location.search).get("pago");
+  if (status === "aprobado") return "¡Seña acreditada! Tu turno quedó confirmado. Lo ves en Mis turnos.";
+  if (status === "pendiente") return "Tu pago está en proceso. Cuando se acredite, el turno se confirma solo.";
+  if (status === "error") return "El pago no se completó. Podés reintentarlo desde Mis turnos antes de que venza la reserva.";
+  return "";
+}
 
 const BARBERSHOP_WHATSAPP = BUSINESS.whatsappNumber;
 
@@ -106,9 +130,34 @@ export function BookingForm({
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingBooking, setLoadingBooking] = useState(false);
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(paymentReturnMessage);
+  const [paymentsConfig, setPaymentsConfig] = useState<PaymentsConfig | null>(null);
+  const [searchedWithoutSlots, setSearchedWithoutSlots] = useState(false);
+  const [loadingWaitlist, setLoadingWaitlist] = useState(false);
   const [confirmedBooking, setConfirmedBooking] =
     useState<ConfirmedBooking | null>(null);
+
+  useEffect(() => {
+    // Saca ?pago=... de la URL para que no se repita el mensaje al recargar.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("pago")) {
+      url.searchParams.delete("pago");
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/v1/payments/config`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: PaymentsConfig | null) => {
+        if (!cancelled && data) setPaymentsConfig(data);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedBarber = barbers.find((barber) => barber.id === barberId);
@@ -190,6 +239,7 @@ export function BookingForm({
   }
 
   function resetAvailabilityState() {
+    setSearchedWithoutSlots(false);
     setSlots([]);
     setSelectedSlot(null);
     setConfirmedBooking(null);
@@ -271,7 +321,10 @@ export function BookingForm({
         setSlots(data.slots);
 
         if (data.slots.length === 0) {
+          setSearchedWithoutSlots(true);
           setMessage("No hay horarios disponibles para esa fecha.");
+        } else {
+          setSearchedWithoutSlots(false);
         }
       }
     } catch {
@@ -315,12 +368,25 @@ export function BookingForm({
       }
 
       setEmail(registerEmail);
-      setPassword(registerPassword);
       setName("");
       setRegisterEmail("");
       setRegisterPassword("");
       setAuthTab("login");
-      setMessage("Cuenta creada correctamente. Ahora tocá iniciar sesión.");
+
+      // La API ya devuelve el token: entramos directo, sin pedir login de nuevo.
+      if (data.accessToken) {
+        localStorage.setItem("barberflow_token", data.accessToken);
+        setToken(data.accessToken);
+        window.dispatchEvent(new Event(APPOINTMENTS_CHANGED));
+        setMessage(
+          selectedSlot
+            ? "¡Cuenta creada! Ya podés confirmar tu turno."
+            : "¡Cuenta creada! Ya podés reservar."
+        );
+      } else {
+        setPassword(registerPassword);
+        setMessage("Cuenta creada correctamente. Ahora tocá iniciar sesión.");
+      }
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
@@ -364,6 +430,7 @@ export function BookingForm({
       setToken(data.accessToken);
       setPassword("");
       setMessage("Sesión iniciada correctamente.");
+      window.dispatchEvent(new Event(APPOINTMENTS_CHANGED));
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
@@ -374,6 +441,7 @@ export function BookingForm({
   function logoutClient() {
     localStorage.removeItem("barberflow_token");
     setToken("");
+    window.dispatchEvent(new Event(APPOINTMENTS_CHANGED));
     setEmail("");
     setPassword("");
     setMessage("Sesión cerrada.");
@@ -394,7 +462,7 @@ export function BookingForm({
   function getStatusLabel(status: string) {
     if (status === "CONFIRMED") return "Confirmado";
     if (status === "CANCELLED") return "Cancelado";
-    if (status === "PENDING") return "Pendiente";
+    if (status === "PENDING") return "Seña pendiente";
     if (status === "COMPLETED") return "Completado";
     if (status === "NO_SHOW") return "No asistió";
 
@@ -458,6 +526,46 @@ ${buildBookingReceiptText()}`
     setMessage("Podés elegir un nuevo servicio, barbero y fecha.");
   }
 
+  /** Sin horarios: el cliente se anota y le llega un email si alguien cancela. */
+  async function joinWaitlist() {
+    if (!token) {
+      setMessage("Iniciá sesión (más abajo) para anotarte en la lista de espera.");
+      return;
+    }
+
+    try {
+      setLoadingWaitlist(true);
+      const response = await fetch(`${API_URL}/v1/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ serviceId, barberId: barberId || undefined, date }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setMessage(Array.isArray(data.message) ? data.message.join(", ") : data.message || "No pudimos anotarte.");
+        return;
+      }
+
+      setSearchedWithoutSlots(false);
+      setMessage("¡Listo! Si se libera un horario ese día te avisamos por email.");
+    } catch {
+      setMessage("No se pudo conectar con la API.");
+    } finally {
+      setLoadingWaitlist(false);
+    }
+  }
+
+  function calendarEvent() {
+    if (!confirmedBooking) return null;
+    return {
+      title: `Turno: ${confirmedBooking.serviceName} con ${confirmedBooking.barberName}`,
+      start: confirmedBooking.startAt,
+      end: confirmedBooking.endAt,
+      details: `Reservado con BarberFlow. Si no podés venir, reprogramalo o cancelalo desde Mis turnos.`,
+    };
+  }
+
   async function confirmBooking() {
     if (!selectedSlot) {
       setMessage("Seleccioná un horario.");
@@ -499,6 +607,15 @@ ${buildBookingReceiptText()}`
       }
 
       setConfirmedBooking({
+        startAt: data.startAt || selectedSlot.startAt,
+        endAt: data.endAt || selectedSlot.endAt,
+        payment: data.payment
+          ? {
+              amount: data.payment.amount,
+              checkoutUrl: data.payment.checkoutUrl,
+              expiresAt: data.payment.expiresAt,
+            }
+          : null,
         serviceName: data.service?.name || selectedService?.name || "Servicio",
         barberName:
           data.barber?.displayName || selectedBarber?.displayName || "Barbero",
@@ -511,7 +628,11 @@ ${buildBookingReceiptText()}`
         clientEmail: data.client?.email || email || "Sin email",
       });
 
-      setMessage("Turno confirmado correctamente.");
+      setMessage(
+        data.status === "PENDING" && data.payment?.checkoutUrl
+          ? "Reservamos tu horario. Pagá la seña para confirmarlo."
+          : "Turno confirmado correctamente."
+      );
 
       setSlots((currentSlots) =>
         currentSlots.filter((slot) => slot.startAt !== selectedSlot.startAt)
@@ -519,6 +640,7 @@ ${buildBookingReceiptText()}`
 
       setSelectedSlot(null);
       setNotes("");
+      window.dispatchEvent(new Event(APPOINTMENTS_CHANGED));
     } catch {
       setMessage("No se pudo conectar con la API.");
     } finally {
@@ -539,6 +661,13 @@ ${buildBookingReceiptText()}`
           Elegí un servicio, un barbero y una fecha para consultar horarios
           disponibles en tiempo real.
         </p>
+
+        {paymentsConfig?.enabled && (
+          <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-xs text-sky-100">
+            <CreditCard size={14} />
+            Para confirmar se abona una seña del {paymentsConfig.depositPercent}% con Mercado Pago.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -726,8 +855,28 @@ ${buildBookingReceiptText()}`
       ) : null}
 
       {message && (
-        <div className="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200">
+        <div
+          role="status"
+          className="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-sm text-yellow-200"
+        >
           {message}
+        </div>
+      )}
+
+      {searchedWithoutSlots && (
+        <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-5 text-center">
+          <p className="text-sm text-purple-100">
+            ¿Querés ese día sí o sí? Anotate en la lista de espera y te avisamos por email si alguien cancela.
+          </p>
+          <button
+            type="button"
+            onClick={joinWaitlist}
+            disabled={loadingWaitlist}
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:opacity-60"
+          >
+            {loadingWaitlist ? <Loader2 size={17} className="animate-spin" /> : <BellRing size={17} />}
+            Avisarme si se libera un turno
+          </button>
         </div>
       )}
 
@@ -744,7 +893,9 @@ ${buildBookingReceiptText()}`
               </p>
 
               <h3 className="text-xl font-black text-white">
-                Turno confirmado
+                {confirmedBooking.status === "PENDING" && confirmedBooking.payment
+                  ? "Turno reservado: falta la seña"
+                  : "Turno confirmado"}
               </h3>
             </div>
           </div>
@@ -794,7 +945,11 @@ ${buildBookingReceiptText()}`
 
             <div className="rounded-2xl bg-zinc-950/60 p-4">
               <p className="text-zinc-500">Estado</p>
-              <p className="mt-1 font-bold text-green-300">
+              <p
+                className={`mt-1 font-bold ${
+                  confirmedBooking.status === "PENDING" ? "text-amber-300" : "text-green-300"
+                }`}
+              >
                 {getStatusLabel(confirmedBooking.status)}
               </p>
             </div>
@@ -813,6 +968,49 @@ ${buildBookingReceiptText()}`
               <p className="mt-1 text-white">{confirmedBooking.notes}</p>
             </div>
           )}
+
+          {confirmedBooking.status === "PENDING" && confirmedBooking.payment?.checkoutUrl && (
+            <div className="mt-5 rounded-2xl border border-sky-400/30 bg-sky-500/10 p-5">
+              <p className="font-bold text-white">
+                Seña de {formatCurrency(confirmedBooking.payment.amount)} con Mercado Pago
+              </p>
+              <p className="mt-1 text-sm text-sky-100">
+                Tenés hasta las{" "}
+                {new Date(confirmedBooking.payment.expiresAt).toLocaleTimeString("es-AR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                para pagarla. Si no, el horario se libera automáticamente.
+              </p>
+              <a
+                href={confirmedBooking.payment.checkoutUrl}
+                className="magnetic mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sky-500 px-6 py-3 text-sm font-bold text-white hover:bg-sky-400 sm:w-auto"
+              >
+                <CreditCard size={18} />
+                Pagar seña con Mercado Pago
+              </a>
+            </div>
+          )}
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <a
+              href={googleCalendarUrl(calendarEvent()!)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              <CalendarPlus size={18} />
+              Agregar a Google Calendar
+            </a>
+            <button
+              type="button"
+              onClick={() => downloadIcs(calendarEvent()!)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              <Download size={18} />
+              Descargar evento (.ics)
+            </button>
+          </div>
 
           <p className="mt-5 text-sm text-green-200">
             Guardá esta información. También podés consultar la reserva en la

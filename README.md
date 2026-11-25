@@ -1,18 +1,20 @@
 # BarberFlow Web · Nacho Barbershop
 
+[![CI](https://github.com/IgnacioGodoy2002/barberflow-web/actions/workflows/ci.yml/badge.svg)](https://github.com/IgnacioGodoy2002/barberflow-web/actions/workflows/ci.yml)
+
 Frontend de **BarberFlow**, un sistema de turnos online para barbería, hecho para un negocio real: **Nacho Barbershop** (Hipólito Bouchard 2086).
 
 Los clientes consultan servicios y precios, eligen barbero, ven horarios disponibles en tiempo real, reservan, reciben un comprobante y pueden cancelar desde la web. El dueño administra todo desde un panel interno.
 
-**[Ver demo online](https://barberflow-web-six.vercel.app/)** · [Documentación de la API (Swagger)](https://barberflow-api-9feo.onrender.com/api/docs) · [Repositorio del backend](https://github.com/IgnacioGodoy2002/barberflow-api)
+**[Ver demo online](https://barberflow-web-six.vercel.app/)** · **[Probar el panel admin (modo demo)](https://barberflow-web-six.vercel.app/admin?demo=1)** · [Documentación de la API (Swagger)](https://barberflow-api-9feo.onrender.com/api/docs) · [Repositorio del backend](https://github.com/IgnacioGodoy2002/barberflow-api)
 
 > El backend está en el plan gratuito de Render y se duerme cuando nadie lo usa. La primera carga puede tardar hasta un minuto. La web lo detecta y muestra el aviso "Despertando el servidor…".
 
-![Landing de BarberFlow](docs/landing.jpg)
+![Recorrido por BarberFlow: reserva y panel admin](docs/demo.gif)
 
-| Galería con visor de fotos | Versión mobile |
-| --- | --- |
-| ![Galería](docs/galeria.jpg) | ![Mobile](docs/mobile.jpg) |
+| Landing | Galería con visor de fotos | Versión mobile |
+| --- | --- | --- |
+| ![Landing](docs/landing.jpg) | ![Galería](docs/galeria.jpg) | ![Mobile](docs/mobile.jpg) |
 
 ## Funcionalidades
 
@@ -22,18 +24,22 @@ Los clientes consultan servicios y precios, eligen barbero, ven horarios disponi
 - Disponibilidad calculada por servicio, barbero y fecha (sin doble reserva y respetando bloqueos de agenda).
 - Registro e inicio de sesión con JWT.
 - Reserva online con comprobante que se puede copiar o mandar por WhatsApp.
-- "Mis turnos": consulta, filtros y cancelación con confirmación.
+- Seña con Mercado Pago (cuando está activada): el turno queda reservado y se confirma al acreditarse el pago.
+- "Agregar a Google Calendar" y descarga del evento `.ics` (Apple Calendar, Outlook).
+- "Mis turnos": consulta, filtros, reprogramación con selector de horarios, pago de seña pendiente y cancelación.
+- Lista de espera: si no hay horarios ese día, el cliente se anota y le llega un email si alguien cancela.
 - Galería de trabajos reales con visor ampliado (teclado: ← →, Esc).
 - Contacto: mapa, horarios y consulta rápida que abre WhatsApp con el mensaje armado.
 - Preguntas frecuentes en acordeón.
 
 ### Panel interno (`/admin`)
+- **Modo demo** (`/admin?demo=1`): cualquiera puede recorrer el panel en solo lectura, con los datos de los clientes ocultos por la API.
 - Dashboard con métricas de la semana.
 - Calendario de turnos, cambio de estado (confirmado, completado, ausente, cancelado) y comprobantes.
 - Turnos manuales para clientes que reservan por teléfono o WhatsApp.
 - Alta y edición de servicios, barberos y asignación de servicios por barbero.
 - Horarios de trabajo y bloqueos de agenda (vacaciones, descansos, etc.).
-- Listado de clientes.
+- Listado de clientes y lista de espera.
 
 ### Experiencia y detalles técnicos
 - Animaciones: cursor personalizado con efecto magnético en botones, aparición escalonada de secciones al hacer scroll, entrada animada del hero, fondo que sigue al mouse, barra de progreso de lectura y contadores animados.
@@ -42,6 +48,7 @@ Los clientes consultan servicios y precios, eligen barbero, ven horarios disponi
 - SEO: metadatos, vista previa al compartir (Open Graph), datos estructurados de negocio local (schema.org `HairSalon`), `sitemap.xml` y `robots.txt`.
 - Accesibilidad: enlace "Saltar al contenido", formularios con etiquetas, foco visible y navegación por teclado.
 - Imágenes optimizadas en WebP con carga diferida.
+- CI con GitHub Actions (lint + build en cada push y pull request).
 
 ## Tecnologías
 

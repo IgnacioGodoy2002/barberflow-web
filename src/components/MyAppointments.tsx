@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  CalendarClock,
   CalendarDays,
+  CalendarPlus,
   Clock,
+  CreditCard,
   Filter,
   Loader2,
   RefreshCcw,
@@ -11,6 +14,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { API_URL } from "../config/api";
+import { googleCalendarUrl } from "../lib/calendar";
+import { RescheduleDialog } from "./RescheduleDialog";
+import { APPOINTMENTS_CHANGED } from "../lib/events";
 
 type Appointment = {
   id: string;
@@ -29,19 +35,36 @@ type Appointment = {
     durationMinutes?: number;
     price?: string | number;
   };
+  payment?: {
+    status: string;
+    amount: string | number;
+    checkoutUrl: string | null;
+    expiresAt: string;
+  } | null;
 };
+
+const isUpcomingActive = (appointment: Appointment) =>
+  (appointment.status === "CONFIRMED" || appointment.status === "PENDING") &&
+  new Date(appointment.startAt).getTime() > Date.now();
 
 export function MyAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCancelId, setLoadingCancelId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
 
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    loadMyAppointments();
+    // Se difiere un tick: la carga cambia estado (loading/mensajes).
+    queueMicrotask(loadMyAppointments);
+
+    // Se recarga sola cuando el cliente inicia sesión, reserva o sale.
+    const reload = () => void loadMyAppointments();
+    window.addEventListener(APPOINTMENTS_CHANGED, reload);
+    return () => window.removeEventListener(APPOINTMENTS_CHANGED, reload);
   }, []);
 
   async function loadMyAppointments() {
@@ -146,7 +169,7 @@ export function MyAppointments() {
   function getStatusLabel(status: string) {
     if (status === "CONFIRMED") return "Confirmado";
     if (status === "CANCELLED") return "Cancelado";
-    if (status === "PENDING") return "Pendiente";
+    if (status === "PENDING") return "Seña pendiente";
     if (status === "COMPLETED") return "Completado";
     if (status === "NO_SHOW") return "No asistió";
 
@@ -446,7 +469,42 @@ export function MyAppointments() {
                   )}
                 </div>
 
-                {appointment.status !== "CANCELLED" && (
+                {isUpcomingActive(appointment) && (
+                  <div className="flex w-full flex-col gap-2 md:w-auto">
+                  {appointment.status === "PENDING" && appointment.payment?.checkoutUrl &&
+                    appointment.payment.status !== "APPROVED" && (
+                    <a
+                      href={appointment.payment.checkoutUrl}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sky-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-sky-400 md:w-auto"
+                    >
+                      <CreditCard size={17} />
+                      Pagar seña
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setRescheduling(appointment)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-purple-500/40 px-5 py-3 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/10 md:w-auto"
+                  >
+                    <CalendarClock size={17} />
+                    Reprogramar
+                  </button>
+                  {appointment.endAt && (
+                    <a
+                      href={googleCalendarUrl({
+                        title: `Turno: ${appointment.service?.name ?? "Barbería"}`,
+                        start: appointment.startAt,
+                        end: appointment.endAt,
+                        details: `Barbero: ${appointment.barber?.displayName ?? ""}`,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10 md:w-auto"
+                    >
+                      <CalendarPlus size={17} />
+                      Agregar al calendario
+                    </a>
+                  )}
                   <button
                     onClick={() => cancelAppointment(appointment.id)}
                     disabled={loadingCancelId === appointment.id}
@@ -464,11 +522,22 @@ export function MyAppointments() {
                       </>
                     )}
                   </button>
+                  </div>
                 )}
               </div>
             </article>
           ))}
         </div>
+      )}
+
+      {rescheduling && (
+        <RescheduleDialog
+          appointment={rescheduling}
+          onClose={() => setRescheduling(null)}
+          onDone={(text) => {
+            void loadMyAppointments().then(() => setMessage(text));
+          }}
+        />
       )}
     </section>
   );

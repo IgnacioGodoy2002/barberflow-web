@@ -48,14 +48,13 @@ export function AdminScheduleBlocks() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadBarbers();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadBarbers);
   }, []);
 
   useEffect(() => {
     if (selectedBarberId) {
-      loadBlocks(selectedBarberId);
-    } else {
-      setBlocks([]);
+      queueMicrotask(() => loadBlocks(selectedBarberId));
     }
   }, [selectedBarberId]);
 
@@ -300,6 +299,7 @@ export function AdminScheduleBlocks() {
           value={selectedBarberId}
           onChange={(event) => {
             setSelectedBarberId(event.target.value);
+            if (!event.target.value) setBlocks([]);
             resetForm();
           }}
           className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-red-500"

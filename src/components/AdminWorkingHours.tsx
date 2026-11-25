@@ -52,14 +52,13 @@ export function AdminWorkingHours() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadBarbers();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadBarbers);
   }, []);
 
   useEffect(() => {
     if (selectedBarberId) {
-      loadWorkingHours(selectedBarberId);
-    } else {
-      setWorkingHours([]);
+      queueMicrotask(() => loadWorkingHours(selectedBarberId));
     }
   }, [selectedBarberId]);
 
@@ -301,6 +300,7 @@ export function AdminWorkingHours() {
           value={selectedBarberId}
           onChange={(event) => {
             setSelectedBarberId(event.target.value);
+            if (!event.target.value) setWorkingHours([]);
             resetForm();
           }}
           className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-yellow-500"

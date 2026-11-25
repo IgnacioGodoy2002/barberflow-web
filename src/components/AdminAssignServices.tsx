@@ -75,7 +75,8 @@ export function AdminAssignServices() {
   }
 
   useEffect(() => {
-    loadData();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadData);
   }, []);
 
   function handleSelectBarber(barberId: string) {

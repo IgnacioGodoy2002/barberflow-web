@@ -148,7 +148,8 @@ export function AdminDashboard() {
   }
 
   useEffect(() => {
-    loadDashboard();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadDashboard);
   }, []);
 
   function getArgentinaDate(date: string) {

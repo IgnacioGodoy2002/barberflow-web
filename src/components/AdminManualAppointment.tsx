@@ -79,15 +79,13 @@ export function AdminManualAppointment({
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadOptions();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadOptions);
   }, []);
 
   useEffect(() => {
-    if (!barberId) {
-      setSelectedBarberServiceIds([]);
-      setServiceId("");
-      return;
-    }
+    // Al deseleccionar el barbero, la lista se limpia en el onChange del select.
+    if (!barberId) return;
 
     loadSelectedBarberServices(barberId);
   }, [barberId]);
@@ -481,6 +479,7 @@ Muchas gracias por reservar.`;
               onChange={(event) => {
                 setBarberId(event.target.value);
                 setServiceId("");
+                if (!event.target.value) setSelectedBarberServiceIds([]);
               }}
               className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
             >

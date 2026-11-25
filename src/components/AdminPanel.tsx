@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Ban,
+  Eye,
+  ListOrdered,
   CalendarClock,
   CalendarDays,
   CheckCircle2,
@@ -21,6 +23,10 @@ import { AdminDashboard } from "./AdminDashboard";
 import { AdminScheduleBlocks } from "./AdminScheduleBlocks";
 import { AdminServices } from "./AdminServices";
 import { AdminWorkingHours } from "./AdminWorkingHours";
+import { AdminWaitlist } from "./AdminWaitlist";
+
+const TOKEN_KEY = "barberflow_admin_token";
+const DEMO_KEY = "barberflow_admin_demo";
 
 type AdminTab =
   | "services"
@@ -30,7 +36,8 @@ type AdminTab =
   | "calendar"
   | "workingHours"
   | "scheduleBlocks"
-  | "clients";
+  | "clients"
+  | "waitlist";
 
 const tabs = [
   {
@@ -73,19 +80,65 @@ const tabs = [
     label: "Clientes",
     icon: Users,
   },
+  {
+    id: "waitlist",
+    label: "Espera",
+    icon: ListOrdered,
+  },
 ] as const;
 
 export function AdminPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [token, setToken] = useState(
-    localStorage.getItem("barberflow_admin_token") || ""
-  );
+  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY) || "");
+  const [isDemo, setIsDemo] = useState(localStorage.getItem(DEMO_KEY) === "true");
 
-  const [activeTab, setActiveTab] = useState<AdminTab>("services");
+  const [activeTab, setActiveTab] = useState<AdminTab>(isDemo ? "calendar" : "services");
   const [loadingLogin, setLoadingLogin] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
   const [message, setMessage] = useState("");
+  const autoDemoStarted = useRef(false);
+
+  /**
+   * Modo demo: entra con una cuenta de solo lectura (la API oculta los datos
+   * de los clientes). Pensado para quien llega desde el portfolio.
+   */
+  async function enterDemo() {
+    try {
+      setLoadingDemo(true);
+      setMessage("");
+
+      const response = await fetch(`${API_URL}/v1/auth/demo`, { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setMessage(data.message || "El modo demo no está disponible en este momento.");
+        return;
+      }
+
+      localStorage.setItem(TOKEN_KEY, data.accessToken);
+      localStorage.setItem(DEMO_KEY, "true");
+      setIsDemo(true);
+      setActiveTab("calendar");
+      setToken(data.accessToken);
+    } catch {
+      setMessage("No se pudo conectar con la API. Si es la primera visita, el servidor puede estar despertando: probá en unos segundos.");
+    } finally {
+      setLoadingDemo(false);
+    }
+  }
+
+  // /admin?demo=1 entra directo al modo demo (link del portfolio).
+  useEffect(() => {
+    if (autoDemoStarted.current || token) return;
+    if (new URLSearchParams(window.location.search).get("demo") !== "1") return;
+    autoDemoStarted.current = true;
+    // Se difiere un tick para no cambiar estado durante el montaje.
+    void Promise.resolve().then(enterDemo);
+    // Solo debe correr una vez al montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function loginAdmin() {
     if (!email || !password) {
@@ -124,7 +177,9 @@ export function AdminPanel() {
         return;
       }
 
-      localStorage.setItem("barberflow_admin_token", data.accessToken);
+      localStorage.setItem(TOKEN_KEY, data.accessToken);
+      localStorage.removeItem(DEMO_KEY);
+      setIsDemo(false);
       setToken(data.accessToken);
       setPassword("");
       setMessage("Sesión de administrador iniciada correctamente.");
@@ -136,7 +191,9 @@ export function AdminPanel() {
   }
 
   function logoutAdmin() {
-    localStorage.removeItem("barberflow_admin_token");
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(DEMO_KEY);
+    setIsDemo(false);
     setToken("");
     setEmail("");
     setPassword("");
@@ -151,6 +208,7 @@ export function AdminPanel() {
     if (activeTab === "calendar") return <AdminCalendar />;
     if (activeTab === "workingHours") return <AdminWorkingHours />;
     if (activeTab === "scheduleBlocks") return <AdminScheduleBlocks />;
+    if (activeTab === "waitlist") return <AdminWaitlist />;
 
     return <AdminClients />;
   }
@@ -222,6 +280,24 @@ export function AdminPanel() {
             {message}
           </div>
         )}
+
+        <div className="mx-auto mt-8 max-w-2xl rounded-3xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-purple-500/10 p-5 text-center md:p-6">
+          <p className="font-bold text-white">¿Venís a ver el proyecto?</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">
+            Recorré el panel completo en modo demo: solo lectura y con los datos
+            de los clientes ocultos. No hace falta usuario ni contraseña.
+          </p>
+          <button
+            type="button"
+            onClick={enterDemo}
+            disabled={loadingDemo}
+            data-cursor-label="Demo"
+            className="magnetic mt-4 inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+          >
+            {loadingDemo ? <Loader2 className="animate-spin" size={18} /> : <Eye size={18} />}
+            {loadingDemo ? "Entrando…" : "Probar el panel en modo demo"}
+          </button>
+        </div>
       </div>
     );
   }
@@ -249,14 +325,26 @@ export function AdminPanel() {
           className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 md:w-auto"
         >
           <LogOut size={18} />
-          Cerrar sesión
+          {isDemo ? "Salir del modo demo" : "Cerrar sesión"}
         </button>
       </div>
+
+      {isDemo && (
+        <div className="mb-6 flex flex-col items-start gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-100 md:flex-row md:items-center md:justify-between">
+          <p className="flex items-center gap-2">
+            <Eye size={18} className="shrink-0" />
+            <span>
+              <b>Modo demo:</b> podés recorrer todo, pero no se guardan cambios. Los
+              nombres, emails y teléfonos de los clientes están ocultos.
+            </span>
+          </p>
+        </div>
+      )}
 
       <AdminDashboard />
 
       <div className="mb-4 rounded-3xl border border-white/10 bg-zinc-950 p-2">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-5 xl:grid-cols-9">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
