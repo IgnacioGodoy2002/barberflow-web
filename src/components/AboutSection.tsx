@@ -1,6 +1,14 @@
-import { MapPin, Scissors, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarCheck, MapPin, Scissors, ShieldCheck, Sparkles, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { API_URL } from "../config/api";
 import { BUSINESS } from "../config/business";
+import { AnimatedNumber } from "./motion/AnimatedNumber";
+
+type PublicStats = { appointmentsManaged: number; clients: number };
+
+/** Solo se muestran las métricas reales cuando ya son significativas. */
+const MIN_TO_SHOW = 10;
 
 const features: { icon: LucideIcon; color: string; title: string; text: string }[] = [
   {
@@ -30,6 +38,21 @@ const features: { icon: LucideIcon; color: string; title: string; text: string }
 ];
 
 export function AboutSection() {
+  const [stats, setStats] = useState<PublicStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/v1/stats/public`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: PublicStats | null) => {
+        if (!cancelled && data && data.appointmentsManaged >= MIN_TO_SHOW) setStats(data);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section id="sobre" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-16">
       <div className="grid items-center gap-10 lg:grid-cols-2">
@@ -53,6 +76,29 @@ export function AboutSection() {
             barbería: gestiona servicios, barberos, horarios, bloqueos de agenda
             y reservas desde una plataforma web conectada a una API propia.
           </p>
+
+          {stats && (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                <CalendarCheck size={20} className="text-green-300" />
+                <div>
+                  <p className="text-xl font-black text-white">
+                    <AnimatedNumber value={stats.appointmentsManaged} />
+                  </p>
+                  <p className="text-xs text-zinc-400">turnos gestionados</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                <Users size={20} className="text-blue-300" />
+                <div>
+                  <p className="text-xl font-black text-white">
+                    <AnimatedNumber value={stats.clients} />
+                  </p>
+                  <p className="text-xs text-zinc-400">clientes</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 flex flex-wrap gap-3">
             <a

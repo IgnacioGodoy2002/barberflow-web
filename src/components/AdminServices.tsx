@@ -62,7 +62,8 @@ export function AdminServices({ onServiceCreated }: AdminServicesProps) {
   }
 
   useEffect(() => {
-    loadServices();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadServices);
   }, []);
 
   function resetForm() {

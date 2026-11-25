@@ -120,8 +120,8 @@ export function Footer() {
               >
                 <FileCode2 size={15} /> Documentación API (Swagger) <ExternalLink size={13} />
               </a>
-              <a href="/admin" className="w-fit text-zinc-400 transition hover:text-purple-400">
-                Panel admin
+              <a href="/admin?demo=1" className="w-fit text-zinc-400 transition hover:text-purple-400">
+                Panel admin (modo demo)
               </a>
             </div>
 

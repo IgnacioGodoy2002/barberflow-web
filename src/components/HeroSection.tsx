@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   CalendarDays,
   Clock,
+  Eye,
   Loader2,
   RefreshCw,
   Scissors,
@@ -96,6 +97,16 @@ export function HeroSection({ status, services, barbers, onRetry }: HeroSectionP
               <Scissors size={16} className="text-purple-300" /> Cancelás desde la web
             </li>
           </ul>
+
+          <a
+            href="/admin?demo=1"
+            data-cursor-label="Demo"
+            className="group mt-6 inline-flex items-center gap-2 text-sm font-semibold text-purple-300 transition hover:text-purple-200"
+          >
+            <Eye size={16} />
+            ¿Venís desde el portfolio? Probá el panel admin en modo demo
+            <span className="transition group-hover:translate-x-1">→</span>
+          </a>
         </div>
 
         <div className="animate-rise-in [animation-delay:300ms]">

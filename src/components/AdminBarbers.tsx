@@ -69,7 +69,8 @@ export function AdminBarbers({ onBarberCreated }: AdminBarbersProps) {
   }
 
   useEffect(() => {
-    loadBarbers();
+    // La carga cambia estado (loading/mensajes): se difiere un tick.
+    queueMicrotask(loadBarbers);
   }, []);
 
   function resetForm() {
